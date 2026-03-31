@@ -18,7 +18,19 @@ export async function POST(request: NextRequest) {
   logger.info('Save playlist request started', { reqId });
 
   try {
-    const rawBody = await request.json();
+    const rawBodyText = await request.text();
+    let rawBody: unknown;
+    try {
+      const sanitizedBody = rawBodyText.replace(/^\uFEFF/, '');
+      rawBody = JSON.parse(sanitizedBody);
+    } catch (parseError) {
+      logger.warn('Save playlist failed JSON parse', {
+        reqId,
+        error: parseError instanceof Error ? parseError.message : 'Unknown error',
+      });
+      return fail('VALIDATION_ERROR', 'Invalid JSON body', 400);
+    }
+
     const validationResult = saveRequestSchema.safeParse(rawBody);
 
     if (!validationResult.success) {
@@ -55,7 +67,7 @@ export async function POST(request: NextRequest) {
 
       if (mode === 'replace') {
         logger.info('Replacing playlist items', { reqId, targetPlaylistId, count: uris.length });
-        // The Spotify PUT /playlists/{playlist_id}/tracks endpoint actually overwrites everything.
+        // The Spotify PUT /playlists/{playlist_id}/items endpoint actually overwrites everything.
         // So, we don't need to clear it first with an empty array.
         // We will perform the PUT with the first chunk, and then POST the rest.
       } else if (mode === 'append') {
@@ -65,6 +77,13 @@ export async function POST(request: NextRequest) {
         logger.warn('Invalid update mode specified', { reqId, mode });
         return fail('VALIDATION_ERROR', 'Invalid update mode specified', 400);
       }
+
+      const trimmedName = playlistName.trim();
+      if (!trimmedName) {
+        logger.warn('Playlist rename attempted with empty name', { reqId, targetPlaylistId });
+        return fail('VALIDATION_ERROR', 'Playlist name cannot be empty when updating', 400);
+      }
+      await spotifyClient.put(`/playlists/${targetPlaylistId}`, { name: trimmedName });
     } else {
       // Create new playlist
       if (!playlistName.trim()) {
@@ -76,9 +95,7 @@ export async function POST(request: NextRequest) {
         );
       }
       logger.info('Creating new playlist', { reqId, playlistName });
-      const profile = await spotifyClient.get<{ id: string }>('/me');
-
-      const created = await spotifyClient.post<{ id: string }>(`/users/${profile.id}/playlists`, {
+      const created = await spotifyClient.post<{ id: string }>(`/me/playlists`, {
         name: playlistName.trim(),
         public: isPublic ?? false,
       });
@@ -95,7 +112,7 @@ export async function POST(request: NextRequest) {
         chunkSize: initialChunk.length,
       });
       const replaceResponse = await spotifyClient.put<AddItemsResponse>(
-        `/playlists/${targetPlaylistId}/tracks`,
+        `/playlists/${targetPlaylistId}/items`,
         { uris: initialChunk }
       );
       finalSnapshotId = replaceResponse.snapshot_id;
@@ -109,7 +126,7 @@ export async function POST(request: NextRequest) {
           chunkSize: chunk.length,
         });
         const addRes = await spotifyClient.post<{ snapshot_id: string }>(
-          `/playlists/${targetPlaylistId}/tracks`,
+          `/playlists/${targetPlaylistId}/items`,
           { uris: chunk }
         );
         finalSnapshotId = addRes.snapshot_id;
@@ -124,7 +141,7 @@ export async function POST(request: NextRequest) {
           chunkSize: chunk.length,
         });
         const addRes = await spotifyClient.post<{ snapshot_id: string }>(
-          `/playlists/${targetPlaylistId}/tracks`,
+          `/playlists/${targetPlaylistId}/items`,
           { uris: chunk }
         );
         finalSnapshotId = addRes.snapshot_id;
@@ -142,10 +159,6 @@ export async function POST(request: NextRequest) {
       mode: isUpdate ? 'updated' : 'created',
     });
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      logger.warn('Save playlist failed JSON parse', { reqId });
-      return fail('VALIDATION_ERROR', 'Invalid JSON body', 400);
-    }
     logger.error('Save playlist pipeline failed entirely', error, { reqId });
     return normalizeError(error);
   }

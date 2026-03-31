@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { TrackList } from '@/components/track-list';
 import type { FailedTrack, ResolvedTrack } from '@/lib/types';
 import { CheckCircle, ExternalLink, Loader2 } from 'lucide-react';
 import Image from 'next/image';
@@ -42,12 +43,21 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccessUrl, setSaveSuccessUrl] = useState<string | null>(null);
 
-  // Keep internal name completely synced with suggestions until edited
+  // Keep internal name synced with suggestions for create flow only
   useEffect(() => {
-    if (!saveSuccessUrl) {
+    if (saveMode === 'create' && !saveSuccessUrl && suggestedName) {
       setPlaylistName(suggestedName);
     }
-  }, [suggestedName, saveSuccessUrl]);
+  }, [saveMode, suggestedName, saveSuccessUrl]);
+
+  // Sync playlist name with selection in update flow
+  useEffect(() => {
+    if (saveMode !== 'update' || !targetPlaylistId) return;
+    const selected = userPlaylists.find((playlist) => playlist.id === targetPlaylistId);
+    if (selected) {
+      setPlaylistName(selected.name);
+    }
+  }, [saveMode, targetPlaylistId, userPlaylists]);
 
   // Load playlists when switching to update mode
   useEffect(() => {
@@ -119,6 +129,35 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
     [tracks]
   );
   const createUris = resolvedTracks.map((t) => t.spotifyUri);
+  const selectedCurrentTracks = useMemo(
+    () => currentPlaylistTracks.filter((track) => currentSelection.has(track.spotifyUri)),
+    [currentPlaylistTracks, currentSelection]
+  );
+  const selectedNewTracks = useMemo(
+    () => resolvedTracks.filter((track) => newSelection.has(track.spotifyUri)),
+    [resolvedTracks, newSelection]
+  );
+  const finalPreviewTracks = useMemo(() => {
+    const seen = new Set<string>();
+    const merged: ResolvedTrack[] = [];
+
+    selectedCurrentTracks.forEach((track) => {
+      if (seen.has(track.spotifyUri)) return;
+      seen.add(track.spotifyUri);
+      merged.push(track);
+    });
+
+    selectedNewTracks.forEach((track) => {
+      if (seen.has(track.spotifyUri)) return;
+      seen.add(track.spotifyUri);
+      merged.push(track);
+    });
+
+    return merged;
+  }, [selectedCurrentTracks, selectedNewTracks]);
+  const dedupedCount =
+    selectedCurrentTracks.length + selectedNewTracks.length - finalPreviewTracks.length;
+  const updateUris = finalPreviewTracks.map((track) => track.spotifyUri);
 
   useEffect(() => {
     if (saveMode !== 'update') return;
@@ -195,19 +234,33 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
   };
 
   const handleSave = async () => {
-    if (saveMode !== 'create') return;
-    if (createUris.length === 0) return;
-    if (!playlistName.trim()) return;
+    if (saveMode === 'create') {
+      if (createUris.length === 0) return;
+      if (!playlistName.trim()) return;
+    }
+    if (saveMode === 'update') {
+      if (!targetPlaylistId) return;
+      if (updateUris.length === 0) return;
+      if (!playlistName.trim()) return;
+    }
 
     setIsSaving(true);
     setSaveError(null);
     setSaveSuccessUrl(null);
 
-    const payload = {
-      playlistName: playlistName.trim(),
-      uris: createUris,
-      isPublic: visibility === 'public',
-    };
+    const payload =
+      saveMode === 'create'
+        ? {
+            playlistName: playlistName.trim(),
+            uris: createUris,
+            isPublic: visibility === 'public',
+          }
+        : {
+            playlistId: targetPlaylistId,
+            playlistName: playlistName.trim(),
+            uris: updateUris,
+            mode: 'replace' as const,
+          };
 
     try {
       const res = await fetch('/api/spotify/playlist/save', {
@@ -222,7 +275,8 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
         throw new Error(data.message || 'Failed to save to Spotify');
       }
 
-      setSaveSuccessUrl(`https://open.spotify.com/playlist/${data.playlistId}`);
+      const id = saveMode === 'create' ? data.playlistId : targetPlaylistId;
+      setSaveSuccessUrl(`https://open.spotify.com/playlist/${id}`);
     } catch (err) {
       const e = err as Error;
       setSaveError(e.message || 'An unexpected error occurred during save.');
@@ -233,9 +287,9 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
 
   const isSaveDisabled =
     isSaving ||
-    (saveMode === 'update'
-      ? true
-      : createUris.length === 0 || (saveMode === 'create' && !playlistName.trim()));
+    (saveMode === 'create'
+      ? createUris.length === 0 || !playlistName.trim()
+      : !targetPlaylistId || updateUris.length === 0 || !playlistName.trim());
 
   // Success State Override
   if (saveSuccessUrl) {
@@ -249,7 +303,7 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
           <p className="text-sm text-muted-foreground">
             {saveMode === 'create'
               ? `Created new playlist: ${playlistName}`
-              : 'Replaced contents of existing playlist.'}
+              : `Updated playlist: ${playlistName}`}
           </p>
         </div>
         <Button
@@ -282,7 +336,7 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
         <div className="flex items-center space-x-2 border p-4 rounded-lg flex-1 cursor-pointer hover:bg-muted/50 transition-colors">
           <RadioGroupItem value="update" id="r-update" />
           <Label htmlFor="r-update" className="cursor-pointer font-medium w-full">
-            Replace Existing Playlist
+            Update Existing Playlist
           </Label>
         </div>
       </RadioGroup>
@@ -325,6 +379,19 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
           </div>
         ) : (
           <div className="space-y-6 animate-in fade-in slide-in-from-top-2">
+            <div className="space-y-2">
+              <Label htmlFor="update-name">Playlist Name</Label>
+              <Input
+                id="update-name"
+                placeholder="Rename this playlist (optional)"
+                value={playlistName}
+                onChange={(e) => setPlaylistName(e.target.value)}
+                disabled={isSaving || !targetPlaylistId}
+              />
+              <p className="text-xs text-muted-foreground">
+                Update the name if you want to rename this playlist.
+              </p>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="target-playlist">
                 Select Target Playlist (Warning: Contents will be replaced)
@@ -493,6 +560,23 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
                 </div>
               )}
             </div>
+
+            <div className="space-y-3 border rounded-lg p-4 bg-muted/10">
+              <div className="flex items-center justify-between">
+                <Label>Final Playlist Preview ({finalPreviewTracks.length})</Label>
+                {dedupedCount > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    Removed {dedupedCount} duplicate{dedupedCount === 1 ? '' : 's'}
+                  </span>
+                )}
+              </div>
+
+              <TrackList
+                tracks={finalPreviewTracks}
+                readOnly
+                emptyMessage="No tracks selected yet."
+              />
+            </div>
           </div>
         )}
       </div>
@@ -507,7 +591,13 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
         <p className="text-sm text-muted-foreground">
           {saveMode === 'update' ? (
             <>
-              {currentSelection.size} current + {newSelection.size} new selected
+              {finalPreviewTracks.length} track
+              {finalPreviewTracks.length === 1 ? '' : 's'} in final preview
+              {dedupedCount > 0 && (
+                <span className="text-amber-600 dark:text-amber-400 ml-1">
+                  ({dedupedCount} duplicate{dedupedCount === 1 ? '' : 's'} removed)
+                </span>
+              )}
             </>
           ) : (
             <>
