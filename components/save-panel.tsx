@@ -26,6 +26,7 @@ interface SpotifyPlaylistMeta {
 export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
   const [saveMode, setSaveMode] = useState<'create' | 'update'>('create');
   const [playlistName, setPlaylistName] = useState(suggestedName);
+  const [visibility, setVisibility] = useState<'private' | 'public'>('private');
   const [targetPlaylistId, setTargetPlaylistId] = useState<string>('');
 
   const [userPlaylists, setUserPlaylists] = useState<SpotifyPlaylistMeta[]>([]);
@@ -51,9 +52,10 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
           const res = await fetch('/api/spotify/playlists');
           if (res.ok) {
             const data = await res.json();
-            setUserPlaylists(data.items);
-            if (data.items.length > 0) {
-              setTargetPlaylistId(data.items[0].id);
+            const items = Array.isArray(data.playlists) ? data.playlists : [];
+            setUserPlaylists(items);
+            if (items.length > 0) {
+              setTargetPlaylistId(items[0].id);
             }
           }
         } catch (error) {
@@ -80,9 +82,11 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
     setSaveSuccessUrl(null);
 
     const payload = {
-      playlistName: playlistName.trim() || 'My Playlist',
+      playlistName: playlistName.trim(),
       uris: validUris,
-      ...(saveMode === 'update' ? { playlistId: targetPlaylistId, mode: 'replace' } : {}),
+      ...(saveMode === 'update'
+        ? { playlistId: targetPlaylistId, mode: 'replace' }
+        : { isPublic: visibility === 'public' }),
     };
 
     try {
@@ -165,15 +169,39 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
 
       <div className="space-y-4 p-4 bg-muted/20 border rounded-lg">
         {saveMode === 'create' ? (
-          <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-            <Label htmlFor="save-name">New Playlist Name</Label>
-            <Input
-              id="save-name"
-              placeholder="E.g., Summer Vibes 2026..."
-              value={playlistName}
-              onChange={(e) => setPlaylistName(e.target.value)}
-              disabled={isSaving}
-            />
+          <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+            <div className="space-y-2">
+              <Label htmlFor="save-name">New Playlist Name</Label>
+              <Input
+                id="save-name"
+                placeholder="E.g., Summer Vibes 2026..."
+                value={playlistName}
+                onChange={(e) => setPlaylistName(e.target.value)}
+                disabled={isSaving}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Visibility</Label>
+              <RadioGroup
+                value={visibility}
+                onValueChange={(val) => setVisibility(val as 'private' | 'public')}
+                className="flex flex-col sm:flex-row gap-3"
+                disabled={isSaving}
+              >
+                <div className="flex items-center space-x-2 border p-3 rounded-lg flex-1 cursor-pointer hover:bg-muted/50 transition-colors">
+                  <RadioGroupItem value="private" id="vis-private" />
+                  <Label htmlFor="vis-private" className="cursor-pointer font-medium w-full">
+                    Private (default)
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2 border p-3 rounded-lg flex-1 cursor-pointer hover:bg-muted/50 transition-colors">
+                  <RadioGroupItem value="public" id="vis-public" />
+                  <Label htmlFor="vis-public" className="cursor-pointer font-medium w-full">
+                    Public
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
           </div>
         ) : (
           <div className="space-y-2 animate-in fade-in slide-in-from-top-2">

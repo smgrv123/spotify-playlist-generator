@@ -45,6 +45,7 @@ export const saveRequestSchema = z.object({
   playlistName: z.string(),
   uris: z.array(z.string()),
   mode: z.enum(['replace', 'append']).optional(),
+  isPublic: z.boolean().optional(),
 });
 
 export const saveResponseSchema = z.object({

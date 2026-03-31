@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { playlistId, playlistName, uris, mode } = validationResult.data;
+    const { playlistId, playlistName, uris, mode, isPublic } = validationResult.data;
 
     if (!uris || uris.length === 0) {
       return fail('VALIDATION_ERROR', 'Cannot save a playlist with zero tracks', 400);
@@ -80,8 +80,7 @@ export async function POST(request: NextRequest) {
 
       const created = await spotifyClient.post<{ id: string }>(`/users/${profile.id}/playlists`, {
         name: playlistName.trim(),
-        public: false, // Default to private for safety
-        description: 'Created with Playlist Manager',
+        public: isPublic ?? false,
       });
       targetPlaylistId = created.id;
       logger.info('New playlist created', { reqId, targetPlaylistId });

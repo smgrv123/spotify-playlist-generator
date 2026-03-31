@@ -10,6 +10,8 @@ interface SpotifyPlaylistsResponse {
     name: string;
     public: boolean | null;
     description: string | null;
+    collaborative?: boolean;
+    owner?: { id?: string | null };
     images?: Array<{ url: string }>;
   }>;
   next: string | null;
@@ -31,9 +33,13 @@ export async function GET(request: NextRequest) {
     );
 
     const items = data.items || [];
+    const profile = await spotifyClient.get<{ id: string }>('/me');
+    const editableItems = items.filter(
+      (playlist) => playlist.owner?.id === profile.id || playlist.collaborative
+    );
 
     // Map to minimal, stable UI payload discarding unnecessary Spotify metadata
-    const mappedPlaylists = items.map((playlist) => ({
+    const mappedPlaylists = editableItems.map((playlist) => ({
       id: playlist.id,
       name: playlist.name,
       public: !!playlist.public, // force boolean
