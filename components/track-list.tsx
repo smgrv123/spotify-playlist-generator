@@ -15,7 +15,7 @@ export function TrackList({ tracks, onRemove }: TrackListProps) {
   if (tracks.length === 0) {
     return (
       <div className="h-48 border-2 border-dashed rounded-xl flex items-center justify-center text-muted-foreground bg-muted/10">
-        No tracks generated yet.
+        No tracks yet.
       </div>
     );
   }

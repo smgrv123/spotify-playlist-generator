@@ -7,21 +7,6 @@ export const apiErrorSchema = z.object({
   retryAfterSeconds: z.number().optional(),
 });
 
-export const generateRequestSchema = z.object({
-  prompt: z.string().min(1, 'Prompt is required').max(1000, 'Prompt is too long'),
-  count: z.number().int().min(5).max(50),
-});
-
-export const generateResponseSchema = z.object({
-  suggestedName: z.string(),
-  tracks: z.array(
-    z.object({
-      title: z.string(),
-      artist: z.string(),
-    })
-  ),
-});
-
 export const resolveRequestSchema = z.object({
   tracks: z.array(
     z.object({

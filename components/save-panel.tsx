@@ -80,7 +80,7 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
     setSaveSuccessUrl(null);
 
     const payload = {
-      playlistName: playlistName.trim() || 'My AI Playlist',
+      playlistName: playlistName.trim() || 'My Playlist',
       uris: validUris,
       ...(saveMode === 'update' ? { playlistId: targetPlaylistId, mode: 'replace' } : {}),
     };

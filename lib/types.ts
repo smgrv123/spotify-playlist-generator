@@ -3,9 +3,6 @@ import * as schemas from './schemas';
 
 export type ApiError = z.infer<typeof schemas.apiErrorSchema>;
 
-export type GenerateRequest = z.infer<typeof schemas.generateRequestSchema>;
-export type GenerateResponse = z.infer<typeof schemas.generateResponseSchema>;
-
 export type ResolveRequest = z.infer<typeof schemas.resolveRequestSchema>;
 export type ResolvedTrack = z.infer<typeof schemas.resolvedTrackSchema>;
 export type FailedTrack = z.infer<typeof schemas.failedTrackSchema>;

@@ -10,7 +10,7 @@ export default function Home() {
             Vibecrafter
           </h1>
           <p className="text-muted-foreground text-lg sm:text-xl font-medium max-w-xl mx-auto">
-            AI-curated playlists directly bound to your Spotify.
+            Create and manage Spotify playlists from your own track lists.
           </p>
         </header>
 
