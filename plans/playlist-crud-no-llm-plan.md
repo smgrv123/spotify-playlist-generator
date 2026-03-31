@@ -106,11 +106,11 @@ Build a read‑only final preview list that dedupes by Spotify URI, preferring c
 
 ### Acceptance criteria
 
-- [ ] Final preview is read‑only and deduped by URI.
-- [ ] Duplicates prefer current tracks.
-- [ ] Ordering is existing tracks first, then new.
-- [ ] Rename is available during update.
-- [ ] Save uses the final preview list.
+- [x] Final preview is read‑only and deduped by URI.
+- [x] Duplicates prefer current tracks.
+- [x] Ordering is existing tracks first, then new.
+- [x] Rename is available during update.
+- [x] Save uses the final preview list.
 
 ---
 
