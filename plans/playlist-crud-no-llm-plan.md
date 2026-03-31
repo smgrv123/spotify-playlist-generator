@@ -22,9 +22,9 @@ Remove all LLM generation capability and AI language across the product while ke
 
 ### Acceptance criteria
 
-- [ ] All LLM routes, schemas, env vars, and references are removed or disabled.
-- [ ] UI copy no longer mentions AI, generation, or prompts.
-- [ ] App still builds and Spotify auth flow remains unchanged.
+- [x] All LLM routes, schemas, env vars, and references are removed or disabled.
+- [x] UI copy no longer mentions AI, generation, or prompts.
+- [x] App still builds and Spotify auth flow remains unchanged.
 
 ---
 
