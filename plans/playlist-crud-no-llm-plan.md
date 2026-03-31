@@ -55,9 +55,9 @@ Keep manual search add always visible. Allow users to add tracks manually, remov
 
 ### Acceptance criteria
 
-- [ ] Manual search box is always visible.
-- [ ] Users can add/remove tracks from the list.
-- [ ] Track list reflects resolved/unresolved states.
+- [x] Manual search box is always visible.
+- [x] Users can add/remove tracks from the list.
+- [x] Track list reflects resolved/unresolved states.
 
 ---
 
