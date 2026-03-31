@@ -7,28 +7,14 @@ export const apiErrorSchema = z.object({
   retryAfterSeconds: z.number().optional(),
 });
 
-export const generateRequestSchema = z.object({
-  prompt: z.string().min(1, 'Prompt is required').max(1000, 'Prompt is too long'),
-  count: z.number().int().min(5).max(50),
-});
-
-export const generateResponseSchema = z.object({
-  suggestedName: z.string(),
-  tracks: z.array(
-    z.object({
-      title: z.string(),
-      artist: z.string(),
-    })
-  ),
+const trackInputSchema = z.object({
+  title: z.string(),
+  artist: z.string(),
+  album: z.string().optional(),
 });
 
 export const resolveRequestSchema = z.object({
-  tracks: z.array(
-    z.object({
-      title: z.string(),
-      artist: z.string(),
-    })
-  ),
+  tracks: z.array(trackInputSchema),
 });
 
 export const resolvedTrackSchema = z.object({
@@ -46,10 +32,7 @@ export const resolvedTrackSchema = z.object({
 export const failedTrackSchema = z.object({
   status: z.literal('failed'),
   reason: z.enum(['NO_MATCH', 'SEARCH_ERROR']),
-  query: z.object({
-    title: z.string(),
-    artist: z.string(),
-  }),
+  query: trackInputSchema,
 });
 
 export const resolveResponseSchema = z.discriminatedUnion('status', [
@@ -62,10 +45,19 @@ export const saveRequestSchema = z.object({
   playlistName: z.string(),
   uris: z.array(z.string()),
   mode: z.enum(['replace', 'append']).optional(),
+  isPublic: z.boolean().optional(),
 });
 
 export const saveResponseSchema = z.object({
   playlistId: z.string(),
   snapshotId: z.string().optional(),
   mode: z.enum(['created', 'updated']),
+});
+
+export const deletePlaylistRequestSchema = z.object({
+  playlistId: z.string().min(1, 'playlistId is required'),
+});
+
+export const deletePlaylistResponseSchema = z.object({
+  playlistId: z.string(),
 });

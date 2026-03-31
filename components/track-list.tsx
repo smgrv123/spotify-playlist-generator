@@ -8,14 +8,17 @@ type TrackItem = ResolvedTrack | FailedTrack;
 
 interface TrackListProps {
   tracks: TrackItem[];
-  onRemove: (index: number) => void;
+  onRemove?: (index: number) => void;
+  readOnly?: boolean;
+  emptyMessage?: string;
 }
 
-export function TrackList({ tracks, onRemove }: TrackListProps) {
+export function TrackList({ tracks, onRemove, readOnly = false, emptyMessage }: TrackListProps) {
+  const canRemove = Boolean(onRemove) && !readOnly;
   if (tracks.length === 0) {
     return (
       <div className="h-48 border-2 border-dashed rounded-xl flex items-center justify-center text-muted-foreground bg-muted/10">
-        No tracks generated yet.
+        {emptyMessage ?? 'No tracks yet.'}
       </div>
     );
   }
@@ -39,15 +42,17 @@ export function TrackList({ tracks, onRemove }: TrackListProps) {
                     <span className="text-xs opacity-80">Could not find a match on Spotify</span>
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-red-600 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/50"
-                  onClick={() => onRemove(index)}
-                  title="Remove track"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {canRemove && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/50"
+                    onClick={() => onRemove?.(index)}
+                    title="Remove track"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             );
           }
@@ -80,15 +85,17 @@ export function TrackList({ tracks, onRemove }: TrackListProps) {
                   </span>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                onClick={() => onRemove(index)}
-                title="Remove track"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              {canRemove && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                  onClick={() => onRemove?.(index)}
+                  title="Remove track"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           );
         })}

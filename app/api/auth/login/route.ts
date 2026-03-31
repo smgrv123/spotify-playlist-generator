@@ -18,6 +18,7 @@ export async function GET() {
       scope: env.SPOTIFY_SCOPES,
       redirect_uri: env.SPOTIFY_REDIRECT_URI,
       state,
+      show_dialog: 'true',
     });
 
     const url = `https://accounts.spotify.com/authorize?${params.toString()}`;

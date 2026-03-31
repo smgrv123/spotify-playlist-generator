@@ -9,8 +9,6 @@ const envSchema = z.object({
     .url('SPOTIFY_REDIRECT_URI must be a valid URL')
     .default('http://localhost:3000/api/auth/callback'),
   SPOTIFY_SCOPES: z.string().min(1, 'SPOTIFY_SCOPES is required'),
-  GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY is required'),
-  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
   APP_BASE_URL: z.url('APP_BASE_URL must be a valid URL'),
   COOKIE_SECURE: z
     .string()

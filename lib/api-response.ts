@@ -61,13 +61,18 @@ export function parseExternalError(error: unknown, fallbackMessage: string): Api
     // Attempt to extract safe fields from common error shape (e.g. Axios or fetch)
     const err = error as Record<string, unknown>;
 
-    // For Spotify/OpenAI typically they have error.message or error.error.message
+    // External APIs often return error.message or error.error.message
     const responseData = (err?.response as Record<string, unknown>)?.data as Record<
       string,
       unknown
     >;
     const errorData = responseData?.error as Record<string, unknown>;
-    const externalMessage = errorData?.message || errorData || err?.message;
+    const directError = err?.error as Record<string, unknown> | string | undefined;
+    const externalMessage =
+      errorData?.message ||
+      (typeof directError === 'object' && directError !== null ? directError.message : undefined) ||
+      err?.message ||
+      err?.error_description;
 
     if (typeof externalMessage === 'string') {
       parsedDetails = { externalMessage };

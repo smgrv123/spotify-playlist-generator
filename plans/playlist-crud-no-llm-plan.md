@@ -22,9 +22,9 @@ Remove all LLM generation capability and AI language across the product while ke
 
 ### Acceptance criteria
 
-- [ ] All LLM routes, schemas, env vars, and references are removed or disabled.
-- [ ] UI copy no longer mentions AI, generation, or prompts.
-- [ ] App still builds and Spotify auth flow remains unchanged.
+- [x] All LLM routes, schemas, env vars, and references are removed or disabled.
+- [x] UI copy no longer mentions AI, generation, or prompts.
+- [x] App still builds and Spotify auth flow remains unchanged.
 
 ---
 
@@ -38,10 +38,10 @@ Introduce a paste box that accepts `Title - Artist` lines and JSON arrays of `{t
 
 ### Acceptance criteria
 
-- [ ] Line parsing uses first `-` delimiter and skips bad lines with warnings.
-- [ ] JSON input accepts `{title, artist, album?}` array.
-- [ ] Resolve step is required before any save.
-- [ ] Unresolved tracks are shown separately with clear messaging.
+- [x] Line parsing uses first `-` delimiter and skips bad lines with warnings.
+- [x] JSON input accepts `{title, artist, album?}` array.
+- [x] Resolve step is required before any save.
+- [x] Unresolved tracks are shown separately with clear messaging.
 
 ---
 
@@ -55,9 +55,9 @@ Keep manual search add always visible. Allow users to add tracks manually, remov
 
 ### Acceptance criteria
 
-- [ ] Manual search box is always visible.
-- [ ] Users can add/remove tracks from the list.
-- [ ] Track list reflects resolved/unresolved states.
+- [x] Manual search box is always visible.
+- [x] Users can add/remove tracks from the list.
+- [x] Track list reflects resolved/unresolved states.
 
 ---
 
@@ -71,10 +71,10 @@ Create flow for new playlists requiring a name and a public/private toggle. No d
 
 ### Acceptance criteria
 
-- [ ] Playlist name is required to create.
-- [ ] Visibility toggle controls public/private.
-- [ ] No description is set on create.
-- [ ] Only resolved tracks are saved.
+- [x] Playlist name is required to create.
+- [x] Visibility toggle controls public/private.
+- [x] No description is set on create.
+- [x] Only resolved tracks are saved.
 
 ---
 
@@ -88,11 +88,11 @@ Update flow that lists editable playlists, fetches full track lists on selection
 
 ### Acceptance criteria
 
-- [ ] Only editable playlists appear for update.
-- [ ] Full playlist tracks are fetched on selection (paginate as needed).
-- [ ] Current and new tracks are shown in separate containers.
-- [ ] Each container has a master toggle; each track has its own toggle.
-- [ ] Default state selects all tracks.
+- [x] Only editable playlists appear for update.
+- [x] Full playlist tracks are fetched on selection (paginate as needed).
+- [x] Current and new tracks are shown in separate containers.
+- [x] Each container has a master toggle; each track has its own toggle.
+- [x] Default state selects all tracks.
 
 ---
 
@@ -106,11 +106,11 @@ Build a read‑only final preview list that dedupes by Spotify URI, preferring c
 
 ### Acceptance criteria
 
-- [ ] Final preview is read‑only and deduped by URI.
-- [ ] Duplicates prefer current tracks.
-- [ ] Ordering is existing tracks first, then new.
-- [ ] Rename is available during update.
-- [ ] Save uses the final preview list.
+- [x] Final preview is read‑only and deduped by URI.
+- [x] Duplicates prefer current tracks.
+- [x] Ordering is existing tracks first, then new.
+- [x] Rename is available during update.
+- [x] Save uses the final preview list.
 
 ---
 

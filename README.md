@@ -1,6 +1,6 @@
-# Spotify Generated Playlist (AI Builder)
+# Spotify Playlist Manager
 
-A full-stack Next.js application that uses Google Gemini AI to interpret natural language prompts and automatically constructs, resolves, and saves complete Spotify Playlists directly to your account.
+A full-stack Next.js application that helps you manually create, update, and manage Spotify playlists from your own track lists.
 
 ---
 
@@ -14,9 +14,8 @@ Copy `.env.example` to `.env.local` and populate the required keys:
 cp .env.example .env.local
 ```
 
-You will need the following APIs:
+You will need the following API:
 
-- **Google Gemini API Key**: Grab one from Google AI Studio.
 - **Spotify Developer App**: Create an app in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
 
 ### 2. Spotify OAuth Configuration (Crucial)
@@ -56,10 +55,6 @@ Usually implies you visited the site via `localhost:3000` but your `.env.local` 
 
 The `SPOTIFY_REDIRECT_URI` exactly as typed in your `.env.local` must be listed byte-for-byte in the allowed redirect URIs on your Spotify Developer Dashboard.
 
-### Gemini Generation Parsing Failures
-
-If Gemini hallucinates a JSON schema error, our `lib/logger.ts` will catch it locally. The UI will prompt you to simply try generating again (typically resolves subsequent times).
-
 ### Spotify "401 Unauthorized"
 
 The platform intelligently uses `isAccessTokenExpiringSoon` to preemptively refresh via `/api/token`. If a 401 still leaks through, the interceptor inside `lib/spotify-client.ts` will force a refresh and instantly retry your request invisibly once. If your refresh token is entirely revoked, you will be booted back to the login screen.
@@ -80,4 +75,4 @@ While your Spotify API application is designated "Development Mode" (before requ
 
 - We strictly avoid monolithic PRs. Everything is scoped down through rigorous `Phase XY` blocks in `task.md`.
 - No UI shells are built until the absolute backing structure (Auth, API) is complete.
-- 2026 Warning: **DO NOT USE NEXT.JS 13/14 PAGE ROUTERS OR VERCEL AI SDK.** We use 2026 Next.js 15 App router natively with standard `fetch` syntax.
+- 2026 Warning: **DO NOT USE NEXT.JS 13/14 PAGE ROUTERS.** We use 2026 Next.js 15 App router natively with standard `fetch` syntax.

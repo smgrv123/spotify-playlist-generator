@@ -56,12 +56,14 @@ export async function POST(request: NextRequest) {
       const chunkIndices = Array.from({ length: chunk.length }, (_, idx) => i + idx);
 
       const chunkPromises = chunk.map(
-        async (track: { title: string; artist: string }, indexInChunk: number) => {
+        async (track: { title: string; artist: string; album?: string }, indexInChunk: number) => {
           const globalIndex = chunkIndices[indexInChunk];
 
           try {
             // Construct explicit track/artist query
-            const q = `track:${track.title} artist:${track.artist}`;
+            const q = `track:${track.title} artist:${track.artist}${
+              track.album ? ` album:${track.album}` : ''
+            }`;
             const encodedQ = encodeURIComponent(q);
 
             const searchResult = await spotifyClient.get<SpotifySearchResponse>(
