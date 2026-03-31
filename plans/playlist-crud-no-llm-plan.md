@@ -38,10 +38,10 @@ Introduce a paste box that accepts `Title - Artist` lines and JSON arrays of `{t
 
 ### Acceptance criteria
 
-- [ ] Line parsing uses first `-` delimiter and skips bad lines with warnings.
-- [ ] JSON input accepts `{title, artist, album?}` array.
-- [ ] Resolve step is required before any save.
-- [ ] Unresolved tracks are shown separately with clear messaging.
+- [x] Line parsing uses first `-` delimiter and skips bad lines with warnings.
+- [x] JSON input accepts `{title, artist, album?}` array.
+- [x] Resolve step is required before any save.
+- [x] Unresolved tracks are shown separately with clear messaging.
 
 ---
 
