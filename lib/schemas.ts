@@ -53,3 +53,11 @@ export const saveResponseSchema = z.object({
   snapshotId: z.string().optional(),
   mode: z.enum(['created', 'updated']),
 });
+
+export const deletePlaylistRequestSchema = z.object({
+  playlistId: z.string().min(1, 'playlistId is required'),
+});
+
+export const deletePlaylistResponseSchema = z.object({
+  playlistId: z.string(),
+});

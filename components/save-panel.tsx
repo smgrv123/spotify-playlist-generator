@@ -26,7 +26,7 @@ interface SpotifyPlaylistMeta {
 }
 
 export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
-  const [saveMode, setSaveMode] = useState<'create' | 'update'>('create');
+  const [saveMode, setSaveMode] = useState<'create' | 'update' | 'delete'>('create');
   const [playlistName, setPlaylistName] = useState(suggestedName);
   const [visibility, setVisibility] = useState<'private' | 'public'>('private');
   const [targetPlaylistId, setTargetPlaylistId] = useState<string>('');
@@ -42,6 +42,18 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccessUrl, setSaveSuccessUrl] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
+
+  const selectedPlaylist = userPlaylists.find((playlist) => playlist.id === targetPlaylistId);
+
+  useEffect(() => {
+    setSaveError(null);
+    setSaveSuccessUrl(null);
+    setDeleteError(null);
+    setDeleteSuccess(null);
+  }, [saveMode]);
 
   // Keep internal name synced with suggestions for create flow only
   useEffect(() => {
@@ -61,7 +73,7 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
 
   // Load playlists when switching to update mode
   useEffect(() => {
-    if (saveMode === 'update' && userPlaylists.length === 0) {
+    if ((saveMode === 'update' || saveMode === 'delete') && userPlaylists.length === 0) {
       const fetchPlaylists = async () => {
         setIsLoadingPlaylists(true);
         try {
@@ -285,13 +297,72 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
     }
   };
 
+  const handleDelete = async () => {
+    if (!targetPlaylistId) return;
+
+    const playlistLabel = selectedPlaylist?.name || 'this playlist';
+    const confirmed =
+      typeof window !== 'undefined' &&
+      window.confirm(`Delete ${playlistLabel}? This will remove it from your library.`);
+
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    setDeleteError(null);
+    setDeleteSuccess(null);
+
+    try {
+      const res = await fetch('/api/spotify/playlist/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playlistId: targetPlaylistId }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to delete playlist');
+      }
+
+      setDeleteSuccess(selectedPlaylist?.name || 'Playlist deleted');
+      setUserPlaylists((prev) => prev.filter((playlist) => playlist.id !== targetPlaylistId));
+      setTargetPlaylistId('');
+      setPlaylistName('');
+    } catch (err) {
+      const e = err as Error;
+      setDeleteError(e.message || 'An unexpected error occurred during delete.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const isSaveDisabled =
     isSaving ||
     (saveMode === 'create'
       ? createUris.length === 0 || !playlistName.trim()
       : !targetPlaylistId || updateUris.length === 0 || !playlistName.trim());
+  const isDeleteDisabled = isDeleting || !targetPlaylistId;
 
   // Success State Override
+  if (deleteSuccess) {
+    return (
+      <div className="flex flex-col items-center justify-center p-6 space-y-4 text-center animate-in fade-in zoom-in duration-500">
+        <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
+          <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+        </div>
+        <div className="space-y-1">
+          <h3 className="text-xl font-semibold">Playlist Deleted</h3>
+          <p className="text-sm text-muted-foreground">{deleteSuccess}</p>
+        </div>
+        <Button
+          onClick={() => setDeleteSuccess(null)}
+          className="mt-4 bg-[#1DB954] hover:bg-[#1ed760] text-black font-semibold rounded-full px-8"
+        >
+          Delete Another
+        </Button>
+      </div>
+    );
+  }
+
   if (saveSuccessUrl) {
     return (
       <div className="flex flex-col items-center justify-center p-6 space-y-4 text-center animate-in fade-in zoom-in duration-500">
@@ -323,7 +394,7 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
     <div className="w-full space-y-6">
       <RadioGroup
         value={saveMode}
-        onValueChange={(val) => setSaveMode(val as 'create' | 'update')}
+        onValueChange={(val) => setSaveMode(val as 'create' | 'update' | 'delete')}
         className="flex flex-col sm:flex-row gap-4"
         disabled={isSaving}
       >
@@ -337,6 +408,12 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
           <RadioGroupItem value="update" id="r-update" />
           <Label htmlFor="r-update" className="cursor-pointer font-medium w-full">
             Update Existing Playlist
+          </Label>
+        </div>
+        <div className="flex items-center space-x-2 border p-4 rounded-lg flex-1 cursor-pointer hover:bg-muted/50 transition-colors">
+          <RadioGroupItem value="delete" id="r-delete" />
+          <Label htmlFor="r-delete" className="cursor-pointer font-medium w-full">
+            Delete Playlist
           </Label>
         </div>
       </RadioGroup>
@@ -377,7 +454,7 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
               </RadioGroup>
             </div>
           </div>
-        ) : (
+        ) : saveMode === 'update' ? (
           <div className="space-y-6 animate-in fade-in slide-in-from-top-2">
             <div className="space-y-2">
               <Label htmlFor="update-name">Playlist Name</Label>
@@ -578,6 +655,43 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
               />
             </div>
           </div>
+        ) : (
+          <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+            <div className="space-y-2">
+              <Label htmlFor="delete-playlist">Select Playlist to Delete</Label>
+              {isLoadingPlaylists ? (
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground p-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Loading your playlists...</span>
+                </div>
+              ) : (
+                <Select
+                  value={targetPlaylistId}
+                  onValueChange={setTargetPlaylistId}
+                  disabled={isDeleting || userPlaylists.length === 0}
+                >
+                  <SelectTrigger id="delete-playlist">
+                    <SelectValue placeholder="Select a playlist to delete" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {userPlaylists.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {userPlaylists.length === 0 && !isLoadingPlaylists && (
+                <p className="text-xs text-destructive mt-1">
+                  No public/editable playlists found on your account.
+                </p>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Deleting will remove this playlist from your library. This action cannot be undone.
+            </p>
+          </div>
         )}
       </div>
 
@@ -586,10 +700,21 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
           {saveError}
         </div>
       )}
+      {deleteError && (
+        <div className="text-sm text-red-500 font-medium p-3 bg-red-50 dark:bg-red-950/20 rounded-md border border-red-200 dark:border-red-900 animate-in fade-in slide-in-from-bottom-2">
+          {deleteError}
+        </div>
+      )}
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {saveMode === 'update' ? (
+          {saveMode === 'delete' ? (
+            selectedPlaylist ? (
+              `Deleting playlist: ${selectedPlaylist.name}`
+            ) : (
+              'Select a playlist to delete.'
+            )
+          ) : saveMode === 'update' ? (
             <>
               {finalPreviewTracks.length} track
               {finalPreviewTracks.length === 1 ? '' : 's'} in final preview
@@ -610,18 +735,36 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
             </>
           )}
         </p>
-        <Button onClick={handleSave} disabled={isSaveDisabled} className="min-w-[150px]">
-          {isSaving ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
-            </>
-          ) : saveMode === 'update' ? (
-            'Finalize Update'
-          ) : (
-            'Save to Spotify'
-          )}
-        </Button>
+        {saveMode === 'delete' ? (
+          <Button
+            onClick={handleDelete}
+            disabled={isDeleteDisabled}
+            variant="destructive"
+            className="min-w-[150px]"
+          >
+            {isDeleting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              'Delete Playlist'
+            )}
+          </Button>
+        ) : (
+          <Button onClick={handleSave} disabled={isSaveDisabled} className="min-w-[150px]">
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : saveMode === 'update' ? (
+              'Finalize Update'
+            ) : (
+              'Save to Spotify'
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );

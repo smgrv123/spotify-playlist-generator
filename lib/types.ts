@@ -10,3 +10,6 @@ export type ResolveResponse = z.infer<typeof schemas.resolveResponseSchema>;
 
 export type SaveRequest = z.infer<typeof schemas.saveRequestSchema>;
 export type SaveResponse = z.infer<typeof schemas.saveResponseSchema>;
+
+export type DeletePlaylistRequest = z.infer<typeof schemas.deletePlaylistRequestSchema>;
+export type DeletePlaylistResponse = z.infer<typeof schemas.deletePlaylistResponseSchema>;

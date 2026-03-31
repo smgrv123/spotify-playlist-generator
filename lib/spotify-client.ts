@@ -81,12 +81,16 @@ async function spotifyFetch<T>(endpoint: string, options: FetchOptions = {}): Pr
   const response = await fetch(url, fetchOptions);
 
   if (response.ok) {
-    // 204 No Content means empty body, parsing JSON will throw
-    if (response.status === 204) {
+    const text = await response.text();
+    if (!text.trim()) {
       return {} as T;
     }
-    const data = await response.json();
-    return data as T;
+    try {
+      return JSON.parse(text) as T;
+    } catch (parseError) {
+      console.error('Failed to parse Spotify response body:', parseError);
+      throw new Error('Failed to parse Spotify response body.');
+    }
   }
 
   // Intercept 401 Unauthorized securely
@@ -176,5 +180,11 @@ export const spotifyClient = {
       ...options,
       method: 'PUT',
       body: JSON.stringify(body),
+    }),
+
+  delete: <T>(endpoint: string, options?: Omit<RequestInit, 'method' | 'body'>) =>
+    spotifyFetch<T>(endpoint, {
+      ...options,
+      method: 'DELETE',
     }),
 };
