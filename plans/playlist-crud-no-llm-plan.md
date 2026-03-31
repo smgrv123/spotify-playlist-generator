@@ -88,11 +88,11 @@ Update flow that lists editable playlists, fetches full track lists on selection
 
 ### Acceptance criteria
 
-- [ ] Only editable playlists appear for update.
-- [ ] Full playlist tracks are fetched on selection (paginate as needed).
-- [ ] Current and new tracks are shown in separate containers.
-- [ ] Each container has a master toggle; each track has its own toggle.
-- [ ] Default state selects all tracks.
+- [x] Only editable playlists appear for update.
+- [x] Full playlist tracks are fetched on selection (paginate as needed).
+- [x] Current and new tracks are shown in separate containers.
+- [x] Each container has a master toggle; each track has its own toggle.
+- [x] Default state selects all tracks.
 
 ---
 
