@@ -31,6 +31,9 @@ importers:
       react-query:
         specifier: ^3.39.3
         version: 3.39.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
       shadcn:
         specifier: ^4.0.1
         version: 4.0.1(@types/node@20.19.37)(typescript@5.9.3)
@@ -5387,6 +5390,12 @@ packages:
       }
     engines: { node: '>= 18' }
 
+  server-only@0.0.1:
+    resolution:
+      {
+        integrity: sha512-qepMx2JxAa5jjfzxG79yPPq+8BuFToHd1hm7kI+Z4zAq1ftQiP7HcxMhDDItrbtwVeLg/cY2JnKnrcFkmiswNA==,
+      }
+
   set-function-length@1.2.2:
     resolution:
       {
@@ -9764,6 +9773,8 @@ snapshots:
       send: 1.2.1
     transitivePeerDependencies:
       - supports-color
+
+  server-only@0.0.1: {}
 
   set-function-length@1.2.2:
     dependencies:

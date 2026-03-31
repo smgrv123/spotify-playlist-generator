@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Spotify Generated Playlist (AI Builder)
 
-## Getting Started
+A full-stack Next.js application that uses Google Gemini AI to interpret natural language prompts and automatically constructs, resolves, and saves complete Spotify Playlists directly to your account.
 
-First, run the development server:
+---
+
+## 🚀 Setup & Local Deployment
+
+### 1. Environment Variables
+
+Copy `.env.example` to `.env.local` and populate the required keys:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+You will need the following APIs:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Google Gemini API Key**: Grab one from Google AI Studio.
+- **Spotify Developer App**: Create an app in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 2. Spotify OAuth Configuration (Crucial)
 
-## Learn More
+In your Spotify Developer Dashboard for your app, you **MUST** whitelist your exact local redirect URI under the "Redirect URIs" configuration block.
 
-To learn more about Next.js, take a look at the following resources:
+For local development across Next.js 15, cookies and redirects are strictly domains-bound.
+Make sure your `.env.local` contains exactly:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```env
+APP_BASE_URL="http://127.0.0.1:3000"
+SPOTIFY_REDIRECT_URI="http://127.0.0.1:3000/api/auth/callback"
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**Do not** use `localhost` in the dashboard or your `.env.local` unless you explicitly map it everywhere, otherwise you will encounter `INVALID_STATE` or `INVALID_CLIENT` OAuth exceptions.
 
-## Deploy on Vercel
+### 3. Run the App
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm install
+npm run dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Navigate to [http://127.0.0.1:3000](http://127.0.0.1:3000).
+
+---
+
+## 🛑 Troubleshooting & Operations
+
+Our backend structured logging drops secure identifiers and correlation ids to stdout for tracking API paths. If you encounter issues, check your server console log.
+
+### "INVALID_STATE" during Login
+
+Usually implies you visited the site via `localhost:3000` but your `.env.local` configured the redirect via `127.0.0.1` (or vice versa). Always use exactly `http://127.0.0.1:3000/` in your browser URL bar.
+
+### "INVALID_CLIENT: Invalid redirect URI"
+
+The `SPOTIFY_REDIRECT_URI` exactly as typed in your `.env.local` must be listed byte-for-byte in the allowed redirect URIs on your Spotify Developer Dashboard.
+
+### Gemini Generation Parsing Failures
+
+If Gemini hallucinates a JSON schema error, our `lib/logger.ts` will catch it locally. The UI will prompt you to simply try generating again (typically resolves subsequent times).
+
+### Spotify "401 Unauthorized"
+
+The platform intelligently uses `isAccessTokenExpiringSoon` to preemptively refresh via `/api/token`. If a 401 still leaks through, the interceptor inside `lib/spotify-client.ts` will force a refresh and instantly retry your request invisibly once. If your refresh token is entirely revoked, you will be booted back to the login screen.
+
+### Spotify "429 Too Many Requests"
+
+The resolver API (`/api/spotify/resolve`) bounds concurrent connections to batches of 10. If the Spotify API hits a rate limit anyway, the internal `spotifyFetch` wrapper automatically halts processing, reads the `Retry-After` header, waits deterministically, and attempts to resume.
+
+---
+
+## 🔒 Known limitations in Spotify Development Mode
+
+While your Spotify API application is designated "Development Mode" (before requesting a quota extension from Spotify), **only users explicitly added to your application's "User Management" list in the dashboard can log in.** If a friend tries to use your localhost app without being added to that dashboard list, they will face an instant `403 Forbidden` error from the Spotify consent screen.
+
+---
+
+### Phase Delivery Rules (Internal Context)
+
+- We strictly avoid monolithic PRs. Everything is scoped down through rigorous `Phase XY` blocks in `task.md`.
+- No UI shells are built until the absolute backing structure (Auth, API) is complete.
+- 2026 Warning: **DO NOT USE NEXT.JS 13/14 PAGE ROUTERS OR VERCEL AI SDK.** We use 2026 Next.js 15 App router natively with standard `fetch` syntax.
