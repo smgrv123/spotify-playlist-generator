@@ -67,7 +67,12 @@ export function parseExternalError(error: unknown, fallbackMessage: string): Api
       unknown
     >;
     const errorData = responseData?.error as Record<string, unknown>;
-    const externalMessage = errorData?.message || errorData || err?.message;
+    const directError = err?.error as Record<string, unknown> | string | undefined;
+    const externalMessage =
+      errorData?.message ||
+      (typeof directError === 'object' && directError !== null ? directError.message : undefined) ||
+      err?.message ||
+      err?.error_description;
 
     if (typeof externalMessage === 'string') {
       parsedDetails = { externalMessage };

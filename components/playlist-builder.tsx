@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useState } from 'react';
+import { Loader2, LogOut } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 import { AddTrackSearch } from '@/components/add-track-search';
 import { SavePanel } from '@/components/save-panel';
@@ -19,8 +20,29 @@ type TrackInput = {
 };
 
 export function PlaylistBuilder() {
-  // TODO: Actual auth state management comes in Phase x
-  const isAuthenticated = true; // Hardcoded to true for now
+  const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>(
+    'loading'
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const checkSession = async () => {
+      try {
+        const res = await fetch('/api/auth/session');
+        const data = await res.json();
+        if (cancelled) return;
+        setAuthStatus(res.ok && data.authenticated ? 'authenticated' : 'unauthenticated');
+      } catch {
+        if (!cancelled) setAuthStatus('unauthenticated');
+      }
+    };
+    checkSession();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const isAuthenticated = authStatus === 'authenticated';
 
   // Draft State
   const [tracks, setTracks] = useState<TrackItem[]>([]);
@@ -29,6 +51,7 @@ export function PlaylistBuilder() {
   const [parseWarnings, setParseWarnings] = useState<string[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
   const [resolveError, setResolveError] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleRemoveTrack = (indexToRemove: number) => {
     setTracks((prev) => prev.filter((_, i) => i !== indexToRemove));
@@ -162,6 +185,16 @@ export function PlaylistBuilder() {
     }
   };
 
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      setAuthStatus('unauthenticated');
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
   const existingUris = new Set(tracks?.map((t) => (t.status === 'resolved' ? t.spotifyUri : '')));
   const resolvedTracks = tracks.filter((track) => track.status === 'resolved') as ResolvedTrack[];
   const failedTracks = tracks.filter((track) => track.status === 'failed') as FailedTrack[];
@@ -172,6 +205,22 @@ export function PlaylistBuilder() {
     if (originalIndex === -1) return;
     handleRemoveTrack(originalIndex);
   };
+
+  if (authStatus === 'loading') {
+    return (
+      <Card className="mx-auto max-w-lg border-2 mt-8 animate-in fade-in duration-700">
+        <CardHeader className="text-center pb-8 pt-10">
+          <CardTitle className="text-3xl font-bold tracking-tight mb-2">Playlist Manager</CardTitle>
+          <CardDescription className="text-base text-muted-foreground mx-auto max-w-sm">
+            Checking your Spotify session...
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center pb-10">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
@@ -197,6 +246,22 @@ export function PlaylistBuilder() {
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex justify-end">
+        <Button variant="outline" onClick={handleLogout} disabled={isLoggingOut}>
+          {isLoggingOut ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Logging out...
+            </>
+          ) : (
+            <>
+              <LogOut className="mr-2 h-4 w-4" />
+              Log Out
+            </>
+          )}
+        </Button>
+      </div>
+
       <Card className="border-2 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
         <CardHeader className="bg-muted/30 border-b pb-4">
           <CardTitle className="text-xl">1. Prepare Your Tracks</CardTitle>
