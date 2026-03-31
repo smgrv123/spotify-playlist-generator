@@ -7,13 +7,14 @@ export const apiErrorSchema = z.object({
   retryAfterSeconds: z.number().optional(),
 });
 
+const trackInputSchema = z.object({
+  title: z.string(),
+  artist: z.string(),
+  album: z.string().optional(),
+});
+
 export const resolveRequestSchema = z.object({
-  tracks: z.array(
-    z.object({
-      title: z.string(),
-      artist: z.string(),
-    })
-  ),
+  tracks: z.array(trackInputSchema),
 });
 
 export const resolvedTrackSchema = z.object({
@@ -31,10 +32,7 @@ export const resolvedTrackSchema = z.object({
 export const failedTrackSchema = z.object({
   status: z.literal('failed'),
   reason: z.enum(['NO_MATCH', 'SEARCH_ERROR']),
-  query: z.object({
-    title: z.string(),
-    artist: z.string(),
-  }),
+  query: trackInputSchema,
 });
 
 export const resolveResponseSchema = z.discriminatedUnion('status', [
