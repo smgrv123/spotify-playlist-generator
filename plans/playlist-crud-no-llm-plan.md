@@ -71,10 +71,10 @@ Create flow for new playlists requiring a name and a public/private toggle. No d
 
 ### Acceptance criteria
 
-- [ ] Playlist name is required to create.
-- [ ] Visibility toggle controls public/private.
-- [ ] No description is set on create.
-- [ ] Only resolved tracks are saved.
+- [x] Playlist name is required to create.
+- [x] Visibility toggle controls public/private.
+- [x] No description is set on create.
+- [x] Only resolved tracks are saved.
 
 ---
 
