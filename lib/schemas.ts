@@ -1,4 +1,12 @@
 import { z } from 'zod';
+import {
+  FAILED_REASON,
+  SAVE_RESPONSE_MODE,
+  UPDATE_MODE,
+  type FailedReason,
+  type SaveResponseMode,
+  type UpdateMode,
+} from './constants';
 
 export const apiErrorSchema = z.object({
   code: z.string(),
@@ -31,7 +39,7 @@ export const resolvedTrackSchema = z.object({
 
 export const failedTrackSchema = z.object({
   status: z.literal('failed'),
-  reason: z.enum(['NO_MATCH', 'SEARCH_ERROR']),
+  reason: z.enum(Object.values(FAILED_REASON) as [FailedReason, ...FailedReason[]]),
   query: trackInputSchema,
 });
 
@@ -44,14 +52,14 @@ export const saveRequestSchema = z.object({
   playlistId: z.string().optional(),
   playlistName: z.string(),
   uris: z.array(z.string()),
-  mode: z.enum(['replace', 'append']).optional(),
+  mode: z.enum(Object.values(UPDATE_MODE) as [UpdateMode, ...UpdateMode[]]).optional(),
   isPublic: z.boolean().optional(),
 });
 
 export const saveResponseSchema = z.object({
   playlistId: z.string(),
   snapshotId: z.string().optional(),
-  mode: z.enum(['created', 'updated']),
+  mode: z.enum(Object.values(SAVE_RESPONSE_MODE) as [SaveResponseMode, ...SaveResponseMode[]]),
 });
 
 export const deletePlaylistRequestSchema = z.object({

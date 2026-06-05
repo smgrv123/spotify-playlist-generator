@@ -128,14 +128,11 @@ async function spotifyFetch<T>(endpoint: string, options: FetchOptions = {}): Pr
     };
 
     // Note: We assign it to an object and throw so Next route handlers can grab it
-    const throwErr = new Error(err.message) as Error & {
-      code?: string;
-      details?: unknown;
-      status?: number;
-    };
-    throwErr.code = err.code;
-    throwErr.details = err.details;
-    throwErr.status = 429;
+    const throwErr = Object.assign(new Error(err.message), {
+      code: err.code,
+      details: err.details,
+      status: 429,
+    });
     throw throwErr;
   }
 
@@ -151,14 +148,11 @@ async function spotifyFetch<T>(endpoint: string, options: FetchOptions = {}): Pr
     errorPayload,
     `Spotify API request failed (${response.status})`
   );
-  const genericErr = new Error(parsedError.message) as Error & {
-    code?: string;
-    details?: unknown;
-    status?: number;
-  };
-  genericErr.code = parsedError.code;
-  genericErr.details = parsedError.details;
-  genericErr.status = response.status;
+  const genericErr = Object.assign(new Error(parsedError.message), {
+    code: parsedError.code,
+    details: parsedError.details,
+    status: response.status,
+  });
   throw genericErr;
 }
 

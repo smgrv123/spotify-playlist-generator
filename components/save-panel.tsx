@@ -9,9 +9,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { TrackList } from '@/components/track-list';
 import type { FailedTrack, ResolvedTrack } from '@/lib/types';
-import { CheckCircle, ExternalLink, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, ExternalLink, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -355,7 +356,7 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
         </div>
         <Button
           onClick={() => setDeleteSuccess(null)}
-          className="mt-4 bg-[#1DB954] hover:bg-[#1ed760] text-black font-semibold rounded-full px-8"
+          className="mt-4 bg-spotify hover:bg-spotify-hover text-black font-semibold rounded-full px-8"
         >
           Delete Another
         </Button>
@@ -379,7 +380,7 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
         </div>
         <Button
           asChild
-          className="mt-4 bg-[#1DB954] hover:bg-[#1ed760] text-black font-semibold rounded-full px-8"
+          className="mt-4 bg-spotify hover:bg-spotify-hover text-black font-semibold rounded-full px-8"
         >
           <a href={saveSuccessUrl} target="_blank" rel="noopener noreferrer">
             Open in Spotify
@@ -696,14 +697,16 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
       </div>
 
       {saveError && (
-        <div className="text-sm text-red-500 font-medium p-3 bg-red-50 dark:bg-red-950/20 rounded-md border border-red-200 dark:border-red-900 animate-in fade-in slide-in-from-bottom-2">
-          {saveError}
-        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{saveError}</AlertDescription>
+        </Alert>
       )}
       {deleteError && (
-        <div className="text-sm text-red-500 font-medium p-3 bg-red-50 dark:bg-red-950/20 rounded-md border border-red-200 dark:border-red-900 animate-in fade-in slide-in-from-bottom-2">
-          {deleteError}
-        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{deleteError}</AlertDescription>
+        </Alert>
       )}
 
       <div className="flex items-center justify-between">

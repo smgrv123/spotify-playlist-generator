@@ -45,6 +45,9 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* Spotify brand colors — themed via CSS var so they can adapt */
+  --color-spotify: var(--spotify);
+  --color-spotify-hover: var(--spotify-hover);
 }
 
 :root {
@@ -80,6 +83,9 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* Spotify brand */
+  --spotify: oklch(0.696 0.219 152.5); /* #1DB954 */
+  --spotify-hover: oklch(0.727 0.219 152.5); /* #1ed760 */
 }
 
 .dark {
@@ -114,6 +120,9 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  /* Spotify brand — same in dark, naturally vibrant */
+  --spotify: oklch(0.696 0.219 152.5);
+  --spotify-hover: oklch(0.727 0.219 152.5);
 }
 
 @layer base {

@@ -1,29 +1,15 @@
 import { normalizeError, ok } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
+import { SpotifyPlaylistsResponse } from '@/lib/spotify-types';
 import { spotifyClient } from '@/lib/spotify-client';
 import crypto from 'crypto';
 import { NextRequest } from 'next/server';
-
-interface SpotifyPlaylistsResponse {
-  items?: Array<{
-    id: string;
-    name: string;
-    public: boolean | null;
-    description: string | null;
-    collaborative?: boolean;
-    owner?: { id?: string | null };
-    images?: Array<{ url: string }>;
-  }>;
-  next: string | null;
-}
 
 export async function GET(request: NextRequest) {
   const reqId = crypto.randomUUID();
   logger.info('Fetch user playlists request started', { reqId });
 
   try {
-    // Only fetch first page (up to 50 playlists limit max per Spotify default)
-    // Extendable via url params and the returned `next` cursor later
     const searchParams = request.nextUrl.searchParams;
     const limit = searchParams.get('limit') || '50';
     const offset = searchParams.get('offset') || '0';
@@ -38,13 +24,12 @@ export async function GET(request: NextRequest) {
       (playlist) => playlist.owner?.id === profile.id || playlist.collaborative
     );
 
-    // Map to minimal, stable UI payload discarding unnecessary Spotify metadata
     const mappedPlaylists = editableItems.map((playlist) => ({
       id: playlist.id,
       name: playlist.name,
-      public: !!playlist.public, // force boolean
+      public: !!playlist.public,
       description: playlist.description || '',
-      imageUrl: playlist.images?.[0]?.url || null, // Best resolution image (usually index 0)
+      imageUrl: playlist.images?.[0]?.url || null,
     }));
 
     logger.info('Fetch user playlists complete', { reqId, returned: mappedPlaylists.length });

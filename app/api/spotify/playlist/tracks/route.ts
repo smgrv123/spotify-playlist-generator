@@ -1,29 +1,10 @@
 import { fail, normalizeError, ok } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
+import { SpotifyPlaylistTracksResponse } from '@/lib/spotify-types';
 import { spotifyClient } from '@/lib/spotify-client';
 import { ResolvedTrack } from '@/lib/types';
 import crypto from 'crypto';
 import { NextRequest } from 'next/server';
-
-type PlaylistItemContent = {
-  type?: 'track' | 'episode' | string;
-  id: string;
-  name: string;
-  uri: string;
-  artists?: Array<{ name: string }>;
-  album?: {
-    name: string;
-    images?: Array<{ url: string }>;
-  };
-};
-
-interface SpotifyPlaylistTracksResponse {
-  items?: Array<{
-    track?: PlaylistItemContent | null;
-    item?: PlaylistItemContent | null;
-  }>;
-  next: string | null;
-}
 
 export async function GET(request: NextRequest) {
   const reqId = crypto.randomUUID();
@@ -41,7 +22,7 @@ export async function GET(request: NextRequest) {
     while (nextUrl) {
       const data: SpotifyPlaylistTracksResponse =
         await spotifyClient.get<SpotifyPlaylistTracksResponse>(nextUrl);
-      const items: SpotifyPlaylistTracksResponse['items'] = data.items || [];
+      const items = data.items || [];
 
       items.forEach((item) => {
         const content = item.item ?? item.track;
