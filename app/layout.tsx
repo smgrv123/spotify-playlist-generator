@@ -1,16 +1,28 @@
-import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
 import { Providers } from '@/components/providers';
+import { cn } from '@/lib/utils';
+import type { Metadata } from 'next';
+import { Hanken_Grotesk, JetBrains_Mono, Space_Grotesk } from 'next/font/google';
 import './globals.css';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const hankenGrotesk = Hanken_Grotesk({
+  variable: '--font-hanken-grotesk',
   subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
 });
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const spaceGrotesk = Space_Grotesk({
+  variable: '--font-space-grotesk',
   subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: '--font-jetbrains-mono',
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -26,7 +38,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body
+        className={cn(
+          hankenGrotesk.variable,
+          spaceGrotesk.variable,
+          jetbrainsMono.variable,
+          'antialiased'
+        )}
+      >
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -1,27 +1,23 @@
+import { redirect } from 'next/navigation';
 import { PlaylistBuilder } from '@/components/playlist-builder';
-import { ThemeToggle } from '@/components/theme-toggle';
+import { TopBar } from '@/components/top-bar';
+import { getSpotifyTokens } from '@/lib/cookies';
 
-export default function Home() {
+export default async function Home() {
+  // Server-side gate: route unauthenticated traffic to /login before any builder
+  // markup is sent to the client. No client-side flash.
+  const tokens = await getSpotifyTokens();
+  if (!tokens.accessToken && !tokens.refreshToken) {
+    redirect('/login');
+  }
+
   return (
-    <div className="min-h-screen bg-background font-sans antialiased text-foreground selection:bg-primary/20">
-      <main className="container mx-auto px-4 py-16 sm:py-24 max-w-6xl flex flex-col items-center">
-        {/* Header */}
-        <header className="w-full mb-16 text-center space-y-3 relative">
-          <div className="absolute right-0 top-0">
-            <ThemeToggle />
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text text-transparent">
-            Vibecrafter
-          </h1>
-          <p className="text-muted-foreground text-lg sm:text-xl font-medium max-w-xl mx-auto">
-            Create and manage Spotify playlists from your own track lists.
-          </p>
-        </header>
-
-        {/* Central Application Builder Shell */}
-        <div className="w-full">
-          <PlaylistBuilder />
-        </div>
+    <div className="min-h-screen">
+      <TopBar />
+      <main className="mx-auto max-w-6xl px-5 py-10 sm:px-11 sm:py-14">
+        {/* PlaylistBuilder is unrestyled in this phase — it continues to render
+            its existing three-card stack. Phase 3+ will replace it. */}
+        <PlaylistBuilder />
       </main>
     </div>
   );
