@@ -47,15 +47,15 @@ The login screen moves to its own `/login` route with the handoff's centered-car
 
 ### Acceptance criteria
 
-- [ ] Light mode renders with the Studio palette, Hanken Grotesk display, 16/11/22px radii, rounded-square brand mark.
-- [ ] Dark mode renders with the Vinyl palette, Space Grotesk display, 14/9/20px radii, circle brand mark, visible green glow on the brand mark.
-- [ ] Theme toggle is binary; clicking flips theme without cycling through `system`. First-load respects OS preference.
-- [ ] `/login` renders the handoff's centered-card layout with art strip and Spotify OAuth CTA. Clicking the CTA hits `/api/auth/login`.
-- [ ] Navigating to `/` while unauthenticated server-side-redirects to `/login` (no client-side flash of builder content).
-- [ ] Navigating to `/` while authenticated renders the existing builder workspace (unrestyled three-card stack is acceptable in this phase).
-- [ ] Theme toggle works on both `/` and `/login`.
-- [ ] `pnpm lint` and `pnpm typecheck` pass clean.
-- [ ] Manual verification in both themes on `/` and `/login`.
+- [x] Light mode renders with the Studio palette, Hanken Grotesk display, 16/11/22px radii, rounded-square brand mark.
+- [x] Dark mode renders with the Vinyl palette, Space Grotesk display, 14/9/20px radii, circle brand mark, visible green glow on the brand mark.
+- [x] Theme toggle is binary; clicking flips theme without cycling through `system`. First-load respects OS preference.
+- [x] `/login` renders the handoff's centered-card layout with art strip and Spotify OAuth CTA. Clicking the CTA hits `/api/auth/login`.
+- [x] Navigating to `/` while unauthenticated server-side-redirects to `/login` (no client-side flash of builder content).
+- [x] Navigating to `/` while authenticated renders the existing builder workspace (unrestyled three-card stack is acceptable in this phase).
+- [x] Theme toggle works on both `/` and `/login`.
+- [x] `pnpm lint` and `pnpm typecheck` pass clean.
+- [x] Manual verification in both themes on `/` and `/login`.
 
 ---
 
