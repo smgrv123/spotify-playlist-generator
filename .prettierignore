@@ -9,3 +9,6 @@ pnpm-lock.yaml
 
 # Design reference, not project code
 design_handoff_vibecrafter
+
+# Per-developer Claude Code settings (gitignored)
+.claude

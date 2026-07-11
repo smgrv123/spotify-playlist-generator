@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { TrackList } from '@/components/track-list';
+import type { Visibility } from '@/lib/constants';
 import type { FailedTrack, ResolvedTrack } from '@/lib/types';
 import { AlertCircle, CheckCircle, ExternalLink, Loader2 } from 'lucide-react';
 import Image from 'next/image';
@@ -18,7 +19,10 @@ import { useEffect, useMemo, useState } from 'react';
 
 interface SavePanelProps {
   tracks: (ResolvedTrack | FailedTrack)[]; // Accept mixed track array but filter internally
-  suggestedName: string;
+  name: string;
+  onNameChange: (name: string) => void;
+  visibility: Visibility;
+  onVisibilityChange: (visibility: Visibility) => void;
 }
 
 interface SpotifyPlaylistMeta {
@@ -26,10 +30,14 @@ interface SpotifyPlaylistMeta {
   name: string;
 }
 
-export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
+export function SavePanel({
+  tracks,
+  name,
+  onNameChange,
+  visibility,
+  onVisibilityChange,
+}: SavePanelProps) {
   const [saveMode, setSaveMode] = useState<'create' | 'update' | 'delete'>('create');
-  const [playlistName, setPlaylistName] = useState(suggestedName);
-  const [visibility, setVisibility] = useState<'private' | 'public'>('private');
   const [targetPlaylistId, setTargetPlaylistId] = useState<string>('');
   const [currentPlaylistTracks, setCurrentPlaylistTracks] = useState<ResolvedTrack[]>([]);
   const [currentSelection, setCurrentSelection] = useState<Set<string>>(new Set());
@@ -56,21 +64,14 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
     setDeleteSuccess(null);
   }, [saveMode]);
 
-  // Keep internal name synced with suggestions for create flow only
-  useEffect(() => {
-    if (saveMode === 'create' && !saveSuccessUrl && suggestedName) {
-      setPlaylistName(suggestedName);
-    }
-  }, [saveMode, suggestedName, saveSuccessUrl]);
-
   // Sync playlist name with selection in update flow
   useEffect(() => {
     if (saveMode !== 'update' || !targetPlaylistId) return;
     const selected = userPlaylists.find((playlist) => playlist.id === targetPlaylistId);
     if (selected) {
-      setPlaylistName(selected.name);
+      onNameChange(selected.name);
     }
-  }, [saveMode, targetPlaylistId, userPlaylists]);
+  }, [saveMode, targetPlaylistId, userPlaylists, onNameChange]);
 
   // Load playlists when switching to update mode
   useEffect(() => {
@@ -249,12 +250,12 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
   const handleSave = async () => {
     if (saveMode === 'create') {
       if (createUris.length === 0) return;
-      if (!playlistName.trim()) return;
+      if (!name.trim()) return;
     }
     if (saveMode === 'update') {
       if (!targetPlaylistId) return;
       if (updateUris.length === 0) return;
-      if (!playlistName.trim()) return;
+      if (!name.trim()) return;
     }
 
     setIsSaving(true);
@@ -264,13 +265,13 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
     const payload =
       saveMode === 'create'
         ? {
-            playlistName: playlistName.trim(),
+            playlistName: name.trim(),
             uris: createUris,
             isPublic: visibility === 'public',
           }
         : {
             playlistId: targetPlaylistId,
-            playlistName: playlistName.trim(),
+            playlistName: name.trim(),
             uris: updateUris,
             mode: 'replace' as const,
           };
@@ -327,7 +328,7 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
       setDeleteSuccess(selectedPlaylist?.name || 'Playlist deleted');
       setUserPlaylists((prev) => prev.filter((playlist) => playlist.id !== targetPlaylistId));
       setTargetPlaylistId('');
-      setPlaylistName('');
+      onNameChange('');
     } catch (err) {
       const e = err as Error;
       setDeleteError(e.message || 'An unexpected error occurred during delete.');
@@ -339,8 +340,8 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
   const isSaveDisabled =
     isSaving ||
     (saveMode === 'create'
-      ? createUris.length === 0 || !playlistName.trim()
-      : !targetPlaylistId || updateUris.length === 0 || !playlistName.trim());
+      ? createUris.length === 0 || !name.trim()
+      : !targetPlaylistId || updateUris.length === 0 || !name.trim());
   const isDeleteDisabled = isDeleting || !targetPlaylistId;
 
   // Success State Override
@@ -373,9 +374,7 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
         <div className="space-y-1">
           <h3 className="text-xl font-semibold">Playlist Saved Successfully!</h3>
           <p className="text-sm text-muted-foreground">
-            {saveMode === 'create'
-              ? `Created new playlist: ${playlistName}`
-              : `Updated playlist: ${playlistName}`}
+            {saveMode === 'create' ? `Created new playlist: ${name}` : `Updated playlist: ${name}`}
           </p>
         </div>
         <Button
@@ -427,8 +426,8 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
               <Input
                 id="save-name"
                 placeholder="E.g., Summer Vibes 2026..."
-                value={playlistName}
-                onChange={(e) => setPlaylistName(e.target.value)}
+                value={name}
+                onChange={(e) => onNameChange(e.target.value)}
                 disabled={isSaving}
               />
             </div>
@@ -436,7 +435,7 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
               <Label>Visibility</Label>
               <RadioGroup
                 value={visibility}
-                onValueChange={(val) => setVisibility(val as 'private' | 'public')}
+                onValueChange={(val) => onVisibilityChange(val as Visibility)}
                 className="flex flex-col sm:flex-row gap-3"
                 disabled={isSaving}
               >
@@ -462,8 +461,8 @@ export function SavePanel({ tracks, suggestedName }: SavePanelProps) {
               <Input
                 id="update-name"
                 placeholder="Rename this playlist (optional)"
-                value={playlistName}
-                onChange={(e) => setPlaylistName(e.target.value)}
+                value={name}
+                onChange={(e) => onNameChange(e.target.value)}
                 disabled={isSaving || !targetPlaylistId}
               />
               <p className="text-xs text-muted-foreground">

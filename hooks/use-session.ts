@@ -1,9 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { API_ROUTES, QUERY_KEYS } from '@/lib/constants';
-
-interface SessionResponse {
-  authenticated: boolean;
-}
+import type { SessionResponse } from '@/lib/types';
 
 export function useSession() {
   const { data, isLoading, error } = useQuery<SessionResponse>({
@@ -21,6 +18,7 @@ export function useSession() {
 
   return {
     isAuthenticated: data?.authenticated ?? false,
+    user: data?.user ?? null,
     isLoading,
     error,
   };

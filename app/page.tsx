@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { PlaylistBuilder } from '@/components/playlist-builder';
+import { BuilderShell } from '@/components/builder-shell';
 import { TopBar } from '@/components/top-bar';
 import { getSpotifyTokens } from '@/lib/cookies';
 
@@ -15,9 +15,7 @@ export default async function Home() {
     <div className="min-h-screen">
       <TopBar />
       <main className="mx-auto max-w-6xl px-5 py-10 sm:px-11 sm:py-14">
-        {/* PlaylistBuilder is unrestyled in this phase — it continues to render
-            its existing three-card stack. Phase 3+ will replace it. */}
-        <PlaylistBuilder />
+        <BuilderShell />
       </main>
     </div>
   );
