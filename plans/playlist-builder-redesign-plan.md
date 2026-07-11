@@ -71,13 +71,13 @@ This phase also introduces the testing framework (Vitest) and the first test sui
 
 ### Acceptance criteria
 
-- [ ] `GET /api/auth/session` returns the new shape; existing consumers unaffected by the additional field.
-- [ ] When authenticated with a working Spotify token, the top bar shows the avatar + display name pulled from `/v1/me`.
-- [ ] When authenticated but `/v1/me` fails, the top bar gracefully omits the user chip; nothing crashes.
-- [ ] Initials are derived from `display_name` when avatar is missing.
-- [ ] Vitest is installed and configured; `pnpm test` runs the suite.
-- [ ] `lib/spotify-me.ts` test suite covers: 200 with display_name + avatar, 200 with no images array, 401, non-2xx, empty display_name.
-- [ ] `pnpm lint`, `pnpm typecheck`, and `pnpm test` pass clean.
+- [x] `GET /api/auth/session` returns the new shape; existing consumers unaffected by the additional field.
+- [x] When authenticated with a working Spotify token, the top bar shows the avatar + display name pulled from `/v1/me`.
+- [x] When authenticated but `/v1/me` fails, the top bar gracefully omits the user chip; nothing crashes.
+- [x] Initials are derived from `display_name` when avatar is missing.
+- [x] Vitest is installed and configured; `pnpm test` runs the suite.
+- [x] `lib/spotify-me.ts` test suite covers: 200 with display_name + avatar, 200 with no images array, 401, non-2xx, empty display_name.
+- [x] `pnpm lint`, `pnpm typecheck`, and `pnpm test` pass clean.
 - [ ] Manual verification: log in with a real Spotify account, confirm chip renders.
 
 ---
@@ -94,13 +94,13 @@ A `Stepper` component renders the three-step header (Prepare / Refine / Save) wi
 
 ### Acceptance criteria
 
-- [ ] `BuilderShell` owns the state previously scattered across `PlaylistBuilder`.
-- [ ] Stepper renders three steps with active/done/disabled visual states (matching the handoff's stepper styling, leveraging the tokens from Phase 1).
-- [ ] Clicking a reached step navigates to it. Clicking an unreached step is a no-op.
-- [ ] Only the active step's card is visible at a time; the other two are hidden.
-- [ ] State (tracks, name, visibility) is preserved when navigating between reached steps.
-- [ ] `pnpm lint` and `pnpm typecheck` pass clean.
-- [ ] Manual verification: walk forward through all three steps, then back, confirming gating and state preservation.
+- [x] `BuilderShell` owns the state previously scattered across `PlaylistBuilder`.
+- [x] Stepper renders three steps with active/done/disabled visual states (matching the handoff's stepper styling, leveraging the tokens from Phase 1).
+- [x] Clicking a reached step navigates to it. Clicking an unreached step is a no-op.
+- [x] Only the active step's card is visible at a time; the other two are hidden.
+- [x] State (tracks, name, visibility) is preserved when navigating between reached steps.
+- [x] `pnpm lint` and `pnpm typecheck` pass clean.
+- [ ] Manual verification: walk forward through all three steps, then back, confirming gating and state preservation. _(Deferred: auto-advance lands in Phase 6; until then `maxReached` stays at 0 and the walk-through isn't observable.)_
 
 ---
 
