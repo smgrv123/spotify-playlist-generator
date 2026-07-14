@@ -118,15 +118,15 @@ The gradient generator is its own deep module (`lib/cover-art.ts`) with a small 
 
 ### Acceptance criteria
 
-- [ ] Workspace renders as two columns at ≥941px wide (step card left, rail right). Rail is sticky.
-- [ ] Cover collage shows real album art for resolved tracks with images.
-- [ ] Cover collage shows the deterministic gradient for resolved tracks without images.
-- [ ] Cover collage shows muted placeholder quadrants when fewer than four tracks are resolved.
-- [ ] Editing the rail's name field updates the shell's `name` state immediately and is reflected if the user later visits the save step.
-- [ ] Stats line shows the resolved track count and total duration in `{H} hr {M} min` or `{M} min` format.
-- [ ] Rail's track list scrolls within a bounded height and shows compact rows.
-- [ ] `lib/cover-art.ts` test suite covers: determinism (same seed → same gradient), distinct seeds → distinct hues, valid CSS gradient output, empty-string seed handled.
-- [ ] `pnpm lint`, `pnpm typecheck`, and `pnpm test` pass clean.
+- [x] Workspace renders as two columns at ≥941px wide (step card left, rail right). Rail is sticky.
+- [x] Cover collage shows real album art for resolved tracks with images.
+- [x] Cover collage shows the deterministic gradient for resolved tracks without images.
+- [x] Cover collage shows muted placeholder quadrants when fewer than four tracks are resolved.
+- [x] Editing the rail's name field updates the shell's `name` state immediately and is reflected if the user later visits the save step.
+- [x] Stats line shows the resolved track count and total duration in `{H} hr {M} min` or `{M} min` format.
+- [x] Rail's track list scrolls within a bounded height and shows compact rows.
+- [x] `lib/cover-art.ts` test suite covers: determinism (same seed → same gradient), distinct seeds → distinct hues, valid CSS gradient output, empty-string seed handled.
+- [x] `pnpm lint`, `pnpm typecheck`, and `pnpm test` pass clean.
 - [ ] Manual verification: walk steps with a mix of tracks-with-art and tracks-without-art.
 
 ---
