@@ -1,11 +1,16 @@
 import { z } from 'zod';
 import {
+  BUILDER_STEP,
   FAILED_REASON,
+  SAVE_MODE,
   SAVE_RESPONSE_MODE,
   UPDATE_MODE,
+  VISIBILITY,
   type FailedReason,
+  type SaveMode,
   type SaveResponseMode,
   type UpdateMode,
+  type Visibility,
 } from './constants';
 
 export const apiErrorSchema = z.object({
@@ -69,4 +74,30 @@ export const deletePlaylistRequestSchema = z.object({
 
 export const deletePlaylistResponseSchema = z.object({
   playlistId: z.string(),
+});
+
+/**
+ * `BuilderStep` values are constrained to `0 | 1 | 2` at the type level; the
+ * schema mirrors that so persisted drafts with a rogue step index fail
+ * validation instead of silently loading.
+ */
+const builderStepSchema = z.union([
+  z.literal(BUILDER_STEP.PREPARE),
+  z.literal(BUILDER_STEP.REFINE),
+  z.literal(BUILDER_STEP.SAVE),
+]);
+
+/**
+ * Full `Draft` shape validated at the sessionStorage boundary. Persisted data
+ * is untrusted input — any missing / extra / mistyped field collapses to
+ * `null` in `loadDraft()`.
+ */
+export const draftSchema = z.object({
+  tracks: z.array(resolveResponseSchema),
+  name: z.string(),
+  visibility: z.enum(Object.values(VISIBILITY) as [Visibility, ...Visibility[]]),
+  step: builderStepSchema,
+  maxReached: builderStepSchema,
+  mode: z.enum(Object.values(SAVE_MODE) as [SaveMode, ...SaveMode[]]),
+  target: z.string(),
 });

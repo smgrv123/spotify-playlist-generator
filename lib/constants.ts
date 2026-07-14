@@ -86,6 +86,16 @@ export const SAVE_MODE = {
 
 export type SaveMode = (typeof SAVE_MODE)[keyof typeof SAVE_MODE];
 
+// ─── Builder Step ─────────────────────────────────────────────────────────────
+
+export const BUILDER_STEP = {
+  PREPARE: 0,
+  REFINE: 1,
+  SAVE: 2,
+} as const;
+
+export type BuilderStep = (typeof BUILDER_STEP)[keyof typeof BUILDER_STEP];
+
 // ─── API Error Codes ──────────────────────────────────────────────────────────
 
 export const API_ERROR_CODE = {

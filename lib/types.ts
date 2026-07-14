@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import * as schemas from './schemas';
-import type { SaveMode, Visibility } from './constants';
+export type { BuilderStep } from './constants';
 
 export type ApiError = z.infer<typeof schemas.apiErrorSchema>;
 
@@ -52,14 +52,4 @@ export interface SessionResponse {
  * - `mode`/`target`: save-step concerns (kept in the draft so they can be
  *   persisted in later phases). Defaults are `'create'` and `''`.
  */
-export type BuilderStep = 0 | 1 | 2;
-
-export interface Draft {
-  tracks: (ResolvedTrack | FailedTrack)[];
-  name: string;
-  visibility: Visibility;
-  step: BuilderStep;
-  maxReached: BuilderStep;
-  mode: SaveMode;
-  target: string;
-}
+export type Draft = z.infer<typeof schemas.draftSchema>;

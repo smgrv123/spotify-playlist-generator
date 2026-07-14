@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 import { AddTrackSearch } from '@/components/add-track-search';
 import { PreviewRail } from '@/components/preview-rail';
@@ -11,20 +11,11 @@ import { TrackPasteForm } from '@/components/track-paste-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import type { Visibility } from '@/lib/constants';
+import * as draftStore from '@/lib/draft-store';
 import { isFailed, isResolved } from '@/lib/type-guards';
-import type { BuilderStep, Draft, FailedTrack, ResolvedTrack } from '@/lib/types';
+import type { BuilderStep, FailedTrack, ResolvedTrack } from '@/lib/types';
 
 type TrackItem = ResolvedTrack | FailedTrack;
-
-const INITIAL_DRAFT: Draft = {
-  tracks: [],
-  name: '',
-  visibility: 'private',
-  step: 0,
-  maxReached: 0,
-  mode: 'create',
-  target: '',
-};
 
 /**
  * Top-level builder UI rendered on `/` for authenticated users.
@@ -37,26 +28,32 @@ const INITIAL_DRAFT: Draft = {
  *
  * Layout: at the `2pane` breakpoint (941px) the workspace is a two-pane grid
  * (active step card left, `PreviewRail` right). Below that it collapses to a
- * single column and the rail stacks under the step card. Phase 5 owns the
- * final mobile polish.
+ * single column and the rail stacks under the step card.
+ *
+ * Persistence: draft is stored in sessionStorage via `lib/draft-storage`.
+ * Refresh within the tab restores the draft; closing the tab wipes it.
  */
 export function BuilderShell() {
-  const [draft, setDraft] = useState<Draft>(INITIAL_DRAFT);
+  const draft = useSyncExternalStore(
+    draftStore.subscribe,
+    draftStore.getSnapshot,
+    draftStore.getServerSnapshot
+  );
 
   const goToStep = (next: BuilderStep) => {
-    setDraft((prev) => (next <= prev.maxReached ? { ...prev, step: next } : prev));
+    draftStore.update((prev) => (next <= prev.maxReached ? { ...prev, step: next } : prev));
   };
 
   const handleTracksResolved = (newTracks: TrackItem[]) => {
-    setDraft((prev) => ({ ...prev, tracks: newTracks }));
+    draftStore.update((prev) => ({ ...prev, tracks: newTracks }));
   };
 
   const handleAddTrack = (track: ResolvedTrack) => {
-    setDraft((prev) => ({ ...prev, tracks: [track, ...prev.tracks] }));
+    draftStore.update((prev) => ({ ...prev, tracks: [track, ...prev.tracks] }));
   };
 
   const handleRemoveFromSubset = (subset: TrackItem[]) => (subsetIndex: number) => {
-    setDraft((prev) => {
+    draftStore.update((prev) => {
       const target = subset[subsetIndex];
       if (!target) return prev;
       const originalIndex = prev.tracks.indexOf(target);
@@ -65,9 +62,9 @@ export function BuilderShell() {
     });
   };
 
-  const handleNameChange = (name: string) => setDraft((prev) => ({ ...prev, name }));
+  const handleNameChange = (name: string) => draftStore.update((prev) => ({ ...prev, name }));
   const handleVisibilityChange = (visibility: Visibility) =>
-    setDraft((prev) => ({ ...prev, visibility }));
+    draftStore.update((prev) => ({ ...prev, visibility }));
 
   const resolvedTracks = draft.tracks.filter(isResolved);
   const failedTracks = draft.tracks.filter(isFailed);
