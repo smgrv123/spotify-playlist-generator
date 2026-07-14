@@ -145,12 +145,12 @@ This phase introduces the third test suite, covering `lib/draft-storage.ts`.
 
 ### Acceptance criteria
 
-- [ ] At ≤940px, workspace is single-column; rail stacks below the step card.
-- [ ] Refreshing within the same tab restores `tracks`, `name`, `visibility`, `step`, `maxReached`, `mode`, `target` exactly as left.
-- [ ] Closing the tab and opening a fresh tab to `/` starts with a clean draft (no stale state).
-- [ ] No hydration warnings in the console.
-- [ ] `lib/draft-storage.ts` test suite covers: round-trip save/load, missing key returns null, malformed JSON returns null without throwing, clear removes the key, absence of `window.sessionStorage` (SSR/Node) returns null and writes are no-ops.
-- [ ] `pnpm lint`, `pnpm typecheck`, and `pnpm test` pass clean.
+- [x] At ≤940px, workspace is single-column; rail stacks below the step card.
+- [x] Refreshing within the same tab restores `tracks`, `name`, `visibility`, `step`, `maxReached`, `mode`, `target` exactly as left.
+- [x] Closing the tab and opening a fresh tab to `/` starts with a clean draft (no stale state).
+- [x] No hydration warnings in the console.
+- [x] `lib/draft-storage.ts` test suite covers: round-trip save/load, missing key returns null, malformed JSON returns null without throwing, clear removes the key, absence of `window.sessionStorage` (SSR/Node) returns null and writes are no-ops.
+- [x] `pnpm lint`, `pnpm typecheck`, and `pnpm test` pass clean.
 - [ ] Manual verification: resize the browser to <940px, refresh mid-flow, open in a fresh tab.
 
 ---
