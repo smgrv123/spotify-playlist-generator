@@ -29,6 +29,7 @@ export const resolvedTrackSchema = z.object({
   status: z.literal('resolved'),
   spotifyUri: z.string(),
   spotifyTrackId: z.string(),
+  durationMs: z.number(),
   displayData: z.object({
     title: z.string(),
     artist: z.string(),

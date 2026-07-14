@@ -75,6 +75,8 @@
   --shadow-card: var(--shadow-card);
   --shadow-pop: var(--shadow-pop);
   --shadow-glow: var(--glow);
+  /* Layout breakpoint — builder workspace flips to two-pane grid here */
+  --breakpoint-2pane: 941px;
 }
 
 /* ============================================================
@@ -159,6 +161,9 @@
   /* Spotify brand (used by existing components) */
   --spotify: oklch(0.696 0.219 152.5);
   --spotify-hover: oklch(0.727 0.219 152.5);
+
+  /* Layout constant — top-bar height, used to offset the sticky preview rail */
+  --topbar-offset: 89px;
 }
 
 /* ============================================================

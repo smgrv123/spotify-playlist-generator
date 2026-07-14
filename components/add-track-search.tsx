@@ -18,6 +18,7 @@ interface SearchResultTrack {
   uri: string;
   album?: string;
   image?: string;
+  duration?: number;
 }
 
 export function AddTrackSearch({ onAdd, existingUris }: AddTrackSearchProps) {
@@ -73,6 +74,7 @@ export function AddTrackSearch({ onAdd, existingUris }: AddTrackSearchProps) {
       status: 'resolved',
       spotifyUri: track.uri,
       spotifyTrackId: track.id,
+      durationMs: track.duration ?? 0,
       displayData: {
         title: track.name,
         artist: track.artists.map((a) => a.name).join(', '),

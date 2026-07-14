@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
               status: 'resolved',
               spotifyUri: matchedTrack.uri,
               spotifyTrackId: matchedTrack.id,
+              durationMs: matchedTrack.duration_ms,
               displayData: {
                 title: matchedTrack.name,
                 artist: matchedTrack.artists.map((a) => a.name).join(', '),

@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
           status: 'resolved',
           spotifyUri: content.uri,
           spotifyTrackId: content.id,
+          durationMs: content.duration_ms ?? 0,
           displayData: {
             title: content.name,
             artist: content.artists.map((artist) => artist.name).join(', '),

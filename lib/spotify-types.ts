@@ -11,6 +11,7 @@ export interface SpotifyTrack {
   id: string;
   name: string;
   uri: string;
+  duration_ms: number;
   artists: Array<{ name: string }>;
   album?: {
     name: string;
@@ -48,6 +49,7 @@ export interface PlaylistItemContent {
   id: string;
   name: string;
   uri: string;
+  duration_ms?: number;
   artists?: Array<{ name: string }>;
   album?: {
     name: string;

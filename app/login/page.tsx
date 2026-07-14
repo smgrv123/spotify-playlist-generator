@@ -1,15 +1,11 @@
 import { BrandMark } from '@/components/brand-mark';
 import { TopBar } from '@/components/top-bar';
 import { API_ROUTES } from '@/lib/constants';
+import { gradientForHue } from '@/lib/cover-art';
 import { getSpotifyTokens } from '@/lib/cookies';
 import { Lock } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-
-function gradientForHue(hue: number) {
-  const h2 = (hue + 55) % 360;
-  return `linear-gradient(135deg, oklch(0.62 0.17 ${hue}), oklch(0.5 0.16 ${h2}))`;
-}
 
 export default async function LoginPage() {
   // If already authenticated, send them straight to the builder.

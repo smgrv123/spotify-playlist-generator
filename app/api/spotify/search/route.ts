@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
       uri: track.uri,
       album: track.album?.name,
       image: track.album?.images?.[0]?.url || null,
+      duration: track.duration_ms,
     }));
 
     return ok({ tracks: mappedTracks });
