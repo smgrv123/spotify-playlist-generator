@@ -1,5 +1,6 @@
 'use client';
 
+import { AlertCircle } from 'lucide-react';
 import { useSyncExternalStore } from 'react';
 
 import { AddTrackSearch } from '@/components/add-track-search';
@@ -10,7 +11,7 @@ import { TrackList } from '@/components/track-list';
 import { TrackPasteForm } from '@/components/track-paste-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import type { Visibility } from '@/lib/constants';
+import { BUILDER_STEP, type Visibility } from '@/lib/constants';
 import * as draftStore from '@/lib/draft-store';
 import { isFailed, isResolved } from '@/lib/type-guards';
 import type { BuilderStep, FailedTrack, ResolvedTrack } from '@/lib/types';
@@ -44,8 +45,25 @@ export function BuilderShell() {
     draftStore.update((prev) => (next <= prev.maxReached ? { ...prev, step: next } : prev));
   };
 
+  /**
+   * On resolve completion, atomically merge the resolved+failed set into the
+   * draft AND — if at least one track resolved — advance to REFINE in the same
+   * transition (so the stepper unlock and the step swap render together, not
+   * as two paints). Total-fail keeps the user on PREPARE; the shell then
+   * renders the failed rows inline beneath the paste UI via `unresolvedSlot`.
+   */
   const handleTracksResolved = (newTracks: TrackItem[]) => {
-    draftStore.update((prev) => ({ ...prev, tracks: newTracks }));
+    draftStore.update((prev) => {
+      if (!newTracks.some(isResolved)) {
+        return { ...prev, tracks: newTracks };
+      }
+      return {
+        ...prev,
+        tracks: newTracks,
+        step: BUILDER_STEP.REFINE,
+        maxReached: prev.maxReached >= BUILDER_STEP.REFINE ? prev.maxReached : BUILDER_STEP.REFINE,
+      };
+    });
   };
 
   const handleAddTrack = (track: ResolvedTrack) => {
@@ -76,18 +94,33 @@ export function BuilderShell() {
 
       <div className="grid grid-cols-1 gap-8 2pane:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 space-y-8">
-          {draft.step === 0 && (
-            <Card className="overflow-hidden border-2 shadow-sm transition-shadow hover:shadow-md">
-              <CardHeader className="border-b bg-muted/30 pb-4">
-                <CardTitle className="text-xl">1. Prepare Your Tracks</CardTitle>
-                <CardDescription>
-                  Paste a list of tracks and resolve them to Spotify.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <TrackPasteForm onTracksResolved={handleTracksResolved} />
-              </CardContent>
-            </Card>
+          {draft.step === BUILDER_STEP.PREPARE && (
+            <TrackPasteForm
+              onTracksResolved={handleTracksResolved}
+              unresolvedSlot={
+                failedTracks.length > 0 ? (
+                  <section
+                    aria-label="Unresolved tracks"
+                    className="mt-5 space-y-2"
+                    data-testid="prepare-unresolved-inline"
+                  >
+                    {failedTracks.map((track, index) => (
+                      <div
+                        key={`${track.query.title}-${track.query.artist}-${index}`}
+                        className="flex items-center gap-3 rounded-[var(--radius-sm)] border border-destructive/40 bg-destructive/10 p-3"
+                      >
+                        <AlertCircle className="h-4 w-4 shrink-0 text-destructive" aria-hidden />
+                        <span className="min-w-0 flex-1 truncate text-[14px] text-foreground">
+                          {track.query.title}
+                          {track.query.artist ? ` — ${track.query.artist}` : ''}
+                        </span>
+                        <span className="shrink-0 text-[12px] text-text-faint">No match</span>
+                      </div>
+                    ))}
+                  </section>
+                ) : null
+              }
+            />
           )}
 
           {draft.step === 1 && (

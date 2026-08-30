@@ -1,18 +1,47 @@
+'use client';
+
+import { AlertCircle, Loader2, Wand2 } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
-import { useState } from 'react';
-import { parseTracks } from '@/lib/track-parser';
 import { useResolveTracks } from '@/hooks/use-resolve-tracks';
-import { ResolvedTrack, FailedTrack } from '@/lib/types';
+import { parseTracks } from '@/lib/track-parser';
+import type { FailedTrack, ResolvedTrack } from '@/lib/types';
 
 interface TrackPasteFormProps {
   onTracksResolved: (tracks: (ResolvedTrack | FailedTrack)[]) => void;
+  /**
+   * Renders directly below the textarea and its formatting-hint paragraph,
+   * above the chip actions and resolve button, still inside the prepare
+   * card. Used by `BuilderShell` to inline a danger-styled failed-tracks
+   * list when a total-fail resolve keeps the user on step 1 — the paste
+   * UI and the failed rows visually share one card.
+   */
+  unresolvedSlot?: ReactNode;
 }
 
-export function TrackPasteForm({ onTracksResolved }: TrackPasteFormProps) {
+const PASTE_PLACEHOLDER = `Title - Artist
+Another Song - Another Artist
+
+Or JSON: [{"title":"Song","artist":"Artist"}]`;
+
+const PASTE_SAMPLE = `Midnight City - M83
+Redbone - Childish Gambino
+Nights - Frank Ocean
+The Less I Know The Better - Tame Impala
+Pink + White - Frank Ocean
+Electric Feel - MGMT`;
+
+/**
+ * Prepare-step paste UI restyled to the Vibecrafter handoff. Renders its own
+ * card container (eyebrow + h-step heading + subtext + textarea + hint +
+ * chip actions + primary resolve button). Consumed by `BuilderShell` when
+ * `step === BUILDER_STEP.PREPARE`.
+ */
+export function TrackPasteForm({ onTracksResolved, unresolvedSlot }: TrackPasteFormProps) {
   const [pasteValue, setPasteValue] = useState('');
   const [parseWarnings, setParseWarnings] = useState<string[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -39,27 +68,65 @@ export function TrackPasteForm({ onTracksResolved }: TrackPasteFormProps) {
     });
   };
 
+  const isDisabled = isResolving || !pasteValue.trim();
+
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="track-paste">Paste Tracks</Label>
+    <section className="rounded-[var(--radius-lg)] border bg-surface p-6 shadow-[var(--shadow-card)] sm:p-8">
+      <p className="label-text text-[11px] font-semibold uppercase text-accent-strong">
+        Step 01 — Import
+      </p>
+      <h2 className="display-text mt-1.5 text-[clamp(22px,3vw,28px)] leading-tight text-foreground">
+        Prepare your tracks
+      </h2>
+      <p className="mt-2 text-[14.5px] leading-relaxed text-muted-foreground">
+        Paste a list and we&apos;ll match each line to Spotify. One track per line, or a JSON array.
+      </p>
+
+      <div className="mt-6 space-y-2">
+        <Label htmlFor="track-paste" className="block text-[12.5px] font-semibold text-foreground">
+          Paste tracks
+        </Label>
         <Textarea
           id="track-paste"
-          placeholder={`Title - Artist\nAnother Song - Another Artist\n\nOr JSON: [{"title":"Song","artist":"Artist","album":"Album"}]`}
           value={pasteValue}
           onChange={(event) => setPasteValue(event.target.value)}
-          className="min-h-[160px]"
+          placeholder={PASTE_PLACEHOLDER}
+          className="block min-h-[220px] w-full resize-y rounded-[var(--radius-sm)] border bg-surface-inset px-4 py-3 text-[14.5px] leading-relaxed text-foreground placeholder:text-text-faint transition focus:border-primary focus:bg-surface focus:outline-none focus:ring-[3px] focus:ring-ring dark:bg-surface-inset"
         />
-        <p className="text-xs text-muted-foreground">
-          Use one track per line in <strong>Title - Artist</strong> format, or paste a JSON array
-          with <strong>title</strong>, <strong>artist</strong>, and optional <strong>album</strong>.
+        <p className="pt-1 text-[12.5px] leading-relaxed text-text-faint">
+          Use <strong className="font-semibold text-muted-foreground">Title - Artist</strong> per
+          line, or paste a JSON array with{' '}
+          <strong className="font-semibold text-muted-foreground">title</strong>,{' '}
+          <strong className="font-semibold text-muted-foreground">artist</strong>, and optional{' '}
+          <strong className="font-semibold text-muted-foreground">album</strong>.
         </p>
+        {unresolvedSlot}
+        <div className="flex flex-wrap gap-2 pt-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setPasteValue(PASTE_SAMPLE)}
+            className="rounded-full border bg-surface-2 px-3.5 py-1.5 text-[12.5px] font-semibold text-muted-foreground transition hover:border-primary hover:text-foreground h-auto hover:bg-surface-2 dark:bg-surface-2 dark:hover:bg-surface-2"
+          >
+            Use a sample list
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setPasteValue('')}
+            className="rounded-full border bg-surface-2 px-3.5 py-1.5 text-[12.5px] font-semibold text-muted-foreground transition hover:border-primary hover:text-foreground h-auto hover:bg-surface-2 dark:bg-surface-2 dark:hover:bg-surface-2"
+          >
+            Clear
+          </Button>
+        </div>
       </div>
 
       {parseWarnings.length > 0 && (
         <Alert
           variant="default"
-          className="border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/10 dark:text-amber-400"
+          className="mt-5 border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/10 dark:text-amber-400"
         >
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -73,22 +140,40 @@ export function TrackPasteForm({ onTracksResolved }: TrackPasteFormProps) {
       )}
 
       {parseError && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="mt-5">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{parseError}</AlertDescription>
         </Alert>
       )}
 
       {resolveError && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="mt-5">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{resolveError.message}</AlertDescription>
         </Alert>
       )}
 
-      <Button onClick={handleResolve} disabled={isResolving || !pasteValue.trim()}>
-        {isResolving ? 'Resolving...' : 'Resolve Tracks'}
-      </Button>
-    </div>
+      <div className="mt-6">
+        <Button
+          type="button"
+          onClick={handleResolve}
+          disabled={isDisabled}
+          size="lg"
+          className="h-11 px-5 text-[15px] font-semibold shadow-[var(--shadow-pop)]"
+        >
+          {isResolving ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              Resolving…
+            </>
+          ) : (
+            <>
+              <Wand2 className="h-4 w-4" aria-hidden />
+              Resolve tracks
+            </>
+          )}
+        </Button>
+      </div>
+    </section>
   );
 }
