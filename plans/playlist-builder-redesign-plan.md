@@ -170,14 +170,14 @@ Behavior on resolve completion:
 
 ### Acceptance criteria
 
-- [ ] Prepare step matches the handoff's visual layout in both themes.
-- [ ] "Use a sample list" populates the textarea with the sample track list.
-- [ ] "Clear" empties the textarea.
-- [ ] Resolve button shows spinner + "Resolving…" during the API call; disabled when textarea is empty.
-- [ ] On at least one successful resolve, app auto-advances to step 2.
-- [ ] On zero successful resolves, stays on step 1; unresolved tracks render inline beneath the textarea as danger-styled rows.
-- [ ] Re-resolving after a total-fail replaces the inline unresolved list.
-- [ ] `pnpm lint` and `pnpm typecheck` pass clean.
+- [x] Prepare step matches the handoff's visual layout in both themes.
+- [x] "Use a sample list" populates the textarea with the sample track list.
+- [x] "Clear" empties the textarea.
+- [x] Resolve button shows spinner + "Resolving…" during the API call; disabled when textarea is empty.
+- [x] On at least one successful resolve, app auto-advances to step 2.
+- [x] On zero successful resolves, stays on step 1; unresolved tracks render inline beneath the textarea as danger-styled rows.
+- [x] Re-resolving after a total-fail replaces the inline unresolved list.
+- [x] `pnpm lint` and `pnpm typecheck` pass clean.
 - [ ] Manual verification: paste the sample list, paste an unmatchable list, paste a mix.
 
 ---
