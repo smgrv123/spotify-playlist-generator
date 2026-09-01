@@ -32,8 +32,8 @@ function formatTrackDuration(ms: number): string {
  * title turns red, the subtext becomes "No Spotify match found", and the
  * duration is replaced with an "unresolved" badge.
  *
- * Row-level chrome (background, border, the grip-handle slot reserved for
- * Phase 13's drag-to-reorder, and the remove button) is owned by the caller
+ * Row-level chrome (background, border, the grip handle used for
+ * drag-to-reorder, and the remove button) is owned by the caller
  * (`TrackList`) — this component only renders content and relies on an
  * ancestor `.group` for the hover-revealed play overlay.
  */

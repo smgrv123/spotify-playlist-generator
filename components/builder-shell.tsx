@@ -1,5 +1,6 @@
 'use client';
 
+import { arrayMove } from '@dnd-kit/sortable';
 import { AlertCircle } from 'lucide-react';
 import { useSyncExternalStore } from 'react';
 
@@ -78,6 +79,31 @@ export function BuilderShell() {
     });
   };
 
+  /**
+   * Drag-to-reorder for the refine step's resolved-track list. `TrackList`
+   * reports `oldIndex`/`newIndex` local to the resolved subset it was given
+   * (mirroring `handleRemoveFromSubset`'s subset-local indices) — reorder
+   * that subset, then splice the result back into `prev.tracks` in place,
+   * leaving failed tracks untouched at their original positions.
+   */
+  const handleReorderResolved = (oldIndex: number, newIndex: number) => {
+    draftStore.update((prev) => {
+      const resolved = prev.tracks.filter(isResolved);
+      if (
+        oldIndex < 0 ||
+        oldIndex >= resolved.length ||
+        newIndex < 0 ||
+        newIndex >= resolved.length
+      ) {
+        return prev;
+      }
+      const reordered = arrayMove(resolved, oldIndex, newIndex);
+      let cursor = 0;
+      const tracks = prev.tracks.map((track) => (isResolved(track) ? reordered[cursor++] : track));
+      return { ...prev, tracks };
+    });
+  };
+
   const handleNameChange = (name: string) => draftStore.update((prev) => ({ ...prev, name }));
   const handleVisibilityChange = (visibility: Visibility) =>
     draftStore.update((prev) => ({ ...prev, visibility }));
@@ -149,6 +175,7 @@ export function BuilderShell() {
                 <TrackList
                   tracks={resolvedTracks}
                   onRemove={handleRemoveFromSubset(resolvedTracks)}
+                  onReorder={handleReorderResolved}
                   emptyMessage="No tracks yet. Search above or go back and paste a list."
                 />
               </div>
