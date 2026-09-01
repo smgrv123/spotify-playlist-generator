@@ -194,15 +194,15 @@ When the user arrives at step 2 with a mix of resolved + failed tracks (from Pha
 
 ### Acceptance criteria
 
-- [ ] Refine step layout matches the handoff (eyebrow, h-step, descriptive subtext).
-- [ ] Search field renders with left-icon + placeholder; spinner appears during search.
-- [ ] Search dropdown renders as an absolute-positioned panel with the handoff's shadow.
-- [ ] Search-result rows render album art + title/artist + Add button.
-- [ ] Duplicate result rows render at 50% opacity with "Added" label and are not addable.
-- [ ] Clicking a non-duplicate result row adds the track to the top of the resolved list and clears the search input.
-- [ ] Clicking outside the dropdown closes it.
-- [ ] Partial-fail draft from Phase 6 renders both resolved and unresolved sections (visual styling of unresolved section is final-styled in Phase 8).
-- [ ] `pnpm lint` and `pnpm typecheck` pass clean.
+- [x] Refine step layout matches the handoff (eyebrow, h-step, descriptive subtext).
+- [x] Search field renders with left-icon + placeholder; spinner appears during search.
+- [x] Search dropdown renders as an absolute-positioned panel with the handoff's shadow.
+- [x] Search-result rows render album art + title/artist + Add button.
+- [x] Duplicate result rows render at 50% opacity with "Added" label and are not addable.
+- [x] Clicking a non-duplicate result row adds the track to the top of the resolved list and clears the search input.
+- [x] Clicking outside the dropdown closes it.
+- [x] Partial-fail draft from Phase 6 renders both resolved and unresolved sections (visual styling of unresolved section is final-styled in Phase 8).
+- [x] `pnpm lint` and `pnpm typecheck` pass clean.
 - [ ] Manual verification: search for a track, attempt to add a duplicate.
 
 ---
@@ -244,15 +244,15 @@ The action bar at the bottom: between summary text + primary "Save to Spotify" b
 
 ### Acceptance criteria
 
-- [ ] Mode grid renders three cards with active/inactive visual states matching the handoff in both themes.
-- [ ] Create card is active by default.
-- [ ] In Create mode: name input is bound to shell `name`; visibility segmented control is bound to shell `visibility`.
-- [ ] When `tracks` contains any failed entries, the warning alert renders with the correct count.
-- [ ] Action bar shows summary text + primary save button.
-- [ ] Save button is disabled when name is empty or when there are zero resolved tracks.
-- [ ] Save button shows spinner + "Saving…" while the API call is in flight.
-- [ ] Successful create save still routes to the existing success-state component (re-styling deferred to Phase 12).
-- [ ] `pnpm lint` and `pnpm typecheck` pass clean.
+- [x] Mode grid renders three cards with active/inactive visual states matching the handoff in both themes.
+- [x] Create card is active by default.
+- [x] In Create mode: name input is bound to shell `name`; visibility segmented control is bound to shell `visibility`.
+- [x] When `tracks` contains any failed entries, the warning alert renders with the correct count.
+- [x] Action bar shows summary text + primary save button.
+- [x] Save button is disabled when name is empty or when there are zero resolved tracks.
+- [x] Save button shows spinner + "Saving…" while the API call is in flight.
+- [x] Successful create save still routes to the existing success-state component (re-styling deferred to Phase 12).
+- [x] `pnpm lint` and `pnpm typecheck` pass clean.
 - [ ] Manual verification: save a new playlist end-to-end.
 
 ---

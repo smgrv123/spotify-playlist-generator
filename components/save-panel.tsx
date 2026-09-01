@@ -1,21 +1,27 @@
+'use client';
+
+import {
+  AlertCircle,
+  CheckCircle,
+  ExternalLink,
+  Globe,
+  Layers,
+  Loader2,
+  Lock,
+  Plus,
+  Trash2,
+  type LucideIcon,
+} from 'lucide-react';
+import { useState } from 'react';
+
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { TrackList } from '@/components/track-list';
-import type { Visibility } from '@/lib/constants';
-import type { FailedTrack, ResolvedTrack } from '@/lib/types';
-import { AlertCircle, CheckCircle, ExternalLink, Loader2 } from 'lucide-react';
-import Image from 'next/image';
-import { useEffect, useMemo, useState } from 'react';
+import { API_ROUTES, SAVE_MODE, VISIBILITY, type SaveMode, type Visibility } from '@/lib/constants';
+import { getErrorMessage, isApiErrorShape, isFailed, isResolved } from '@/lib/type-guards';
+import type { FailedTrack, ResolvedTrack, SaveRequest, SaveResponse } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 interface SavePanelProps {
   tracks: (ResolvedTrack | FailedTrack)[]; // Accept mixed track array but filter internally
@@ -25,11 +31,51 @@ interface SavePanelProps {
   onVisibilityChange: (visibility: Visibility) => void;
 }
 
-interface SpotifyPlaylistMeta {
-  id: string;
-  name: string;
+interface ModeOption {
+  value: SaveMode;
+  title: string;
+  description: string;
+  icon: LucideIcon;
 }
 
+const MODE_OPTIONS: ModeOption[] = [
+  {
+    value: SAVE_MODE.CREATE,
+    title: 'Create new',
+    description: 'Make a fresh playlist',
+    icon: Plus,
+  },
+  {
+    value: SAVE_MODE.UPDATE,
+    title: 'Update existing',
+    description: 'Replace a playlist',
+    icon: Layers,
+  },
+  { value: SAVE_MODE.DELETE, title: 'Delete', description: 'Remove from library', icon: Trash2 },
+];
+
+interface VisibilityOption {
+  value: Visibility;
+  label: string;
+  icon: LucideIcon;
+}
+
+const VISIBILITY_OPTIONS: VisibilityOption[] = [
+  { value: VISIBILITY.PRIVATE, label: 'Private', icon: Lock },
+  { value: VISIBILITY.PUBLIC, label: 'Public', icon: Globe },
+];
+
+/**
+ * Save-step card, restyled to the Vibecrafter handoff. Owns its own section
+ * wrapper (eyebrow + heading), matching the pattern `TrackPasteForm` and the
+ * refine-step section established in earlier phases.
+ *
+ * `mode` is owned locally (not lifted into the shell's `Draft`) — see the
+ * `Draft` docstring in `lib/types.ts`, which defers persisting save-step
+ * concerns to a later phase. Only Create mode is wired to the save API in
+ * this phase; Update and Delete render minimal stub bodies and become
+ * functional in Phases 10 and 11.
+ */
 export function SavePanel({
   tracks,
   name,
@@ -37,333 +83,48 @@ export function SavePanel({
   visibility,
   onVisibilityChange,
 }: SavePanelProps) {
-  const [saveMode, setSaveMode] = useState<'create' | 'update' | 'delete'>('create');
-  const [targetPlaylistId, setTargetPlaylistId] = useState<string>('');
-  const [currentPlaylistTracks, setCurrentPlaylistTracks] = useState<ResolvedTrack[]>([]);
-  const [currentSelection, setCurrentSelection] = useState<Set<string>>(new Set());
-  const [newSelection, setNewSelection] = useState<Set<string>>(new Set());
-  const [isLoadingCurrentTracks, setIsLoadingCurrentTracks] = useState(false);
-  const [currentTracksError, setCurrentTracksError] = useState<string | null>(null);
-
-  const [userPlaylists, setUserPlaylists] = useState<SpotifyPlaylistMeta[]>([]);
-  const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
-
+  const [mode, setMode] = useState<SaveMode>(SAVE_MODE.CREATE);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccessUrl, setSaveSuccessUrl] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
 
-  const selectedPlaylist = userPlaylists.find((playlist) => playlist.id === targetPlaylistId);
+  const resolvedTracks = tracks.filter(isResolved);
+  const failedTracks = tracks.filter(isFailed);
+  const uris = resolvedTracks.map((track) => track.spotifyUri);
 
-  useEffect(() => {
-    setSaveError(null);
-    setSaveSuccessUrl(null);
-    setDeleteError(null);
-    setDeleteSuccess(null);
-  }, [saveMode]);
-
-  // Sync playlist name with selection in update flow
-  useEffect(() => {
-    if (saveMode !== 'update' || !targetPlaylistId) return;
-    const selected = userPlaylists.find((playlist) => playlist.id === targetPlaylistId);
-    if (selected) {
-      onNameChange(selected.name);
-    }
-  }, [saveMode, targetPlaylistId, userPlaylists, onNameChange]);
-
-  // Load playlists when switching to update mode
-  useEffect(() => {
-    if ((saveMode === 'update' || saveMode === 'delete') && userPlaylists.length === 0) {
-      const fetchPlaylists = async () => {
-        setIsLoadingPlaylists(true);
-        try {
-          const res = await fetch('/api/spotify/playlists');
-          if (res.ok) {
-            const data = await res.json();
-            const items = Array.isArray(data.playlists) ? data.playlists : [];
-            setUserPlaylists(items);
-            if (items.length > 0) {
-              setTargetPlaylistId(items[0].id);
-            }
-          }
-        } catch (error) {
-          console.error('Failed to load playlists', error);
-        } finally {
-          setIsLoadingPlaylists(false);
-        }
-      };
-      fetchPlaylists();
-    }
-  }, [saveMode, userPlaylists.length]);
-
-  // Load selected playlist tracks for update flow
-  useEffect(() => {
-    if (saveMode !== 'update' || !targetPlaylistId) return;
-    let isCancelled = false;
-
-    const fetchTracks = async () => {
-      setIsLoadingCurrentTracks(true);
-      setCurrentTracksError(null);
-      try {
-        const res = await fetch(
-          `/api/spotify/playlist/tracks?playlistId=${encodeURIComponent(targetPlaylistId)}`
-        );
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.message || 'Failed to load playlist tracks');
-        }
-        const data = await res.json();
-        const loadedTracks = Array.isArray(data.tracks) ? (data.tracks as ResolvedTrack[]) : [];
-        if (isCancelled) return;
-        setCurrentPlaylistTracks(loadedTracks);
-        setCurrentSelection(new Set(loadedTracks.map((track) => track.spotifyUri)));
-      } catch (error) {
-        if (isCancelled) return;
-        const message = error instanceof Error ? error.message : 'Failed to load playlist tracks';
-        setCurrentTracksError(message);
-        setCurrentPlaylistTracks([]);
-        setCurrentSelection(new Set());
-      } finally {
-        if (!isCancelled) {
-          setIsLoadingCurrentTracks(false);
-        }
-      }
-    };
-
-    fetchTracks();
-    return () => {
-      isCancelled = true;
-    };
-  }, [saveMode, targetPlaylistId]);
-
-  const resolvedTracks = useMemo(
-    () => tracks.filter((t) => t.status === 'resolved') as ResolvedTrack[],
-    [tracks]
-  );
-  const createUris = resolvedTracks.map((t) => t.spotifyUri);
-  const selectedCurrentTracks = useMemo(
-    () => currentPlaylistTracks.filter((track) => currentSelection.has(track.spotifyUri)),
-    [currentPlaylistTracks, currentSelection]
-  );
-  const selectedNewTracks = useMemo(
-    () => resolvedTracks.filter((track) => newSelection.has(track.spotifyUri)),
-    [resolvedTracks, newSelection]
-  );
-  const finalPreviewTracks = useMemo(() => {
-    const seen = new Set<string>();
-    const merged: ResolvedTrack[] = [];
-
-    selectedCurrentTracks.forEach((track) => {
-      if (seen.has(track.spotifyUri)) return;
-      seen.add(track.spotifyUri);
-      merged.push(track);
-    });
-
-    selectedNewTracks.forEach((track) => {
-      if (seen.has(track.spotifyUri)) return;
-      seen.add(track.spotifyUri);
-      merged.push(track);
-    });
-
-    return merged;
-  }, [selectedCurrentTracks, selectedNewTracks]);
-  const dedupedCount =
-    selectedCurrentTracks.length + selectedNewTracks.length - finalPreviewTracks.length;
-  const updateUris = finalPreviewTracks.map((track) => track.spotifyUri);
-
-  useEffect(() => {
-    if (saveMode !== 'update') return;
-    const resolvedUris = resolvedTracks.map((track) => track.spotifyUri);
-
-    setNewSelection((prev) => {
-      if (resolvedUris.length === 0) return new Set();
-      if (prev.size === 0) {
-        return new Set(resolvedUris);
-      }
-
-      const previouslyAllSelected = resolvedUris.every((uri) => prev.has(uri));
-      const next = new Set<string>();
-
-      if (previouslyAllSelected) {
-        resolvedUris.forEach((uri) => next.add(uri));
-        return next;
-      }
-
-      resolvedUris.forEach((uri) => {
-        if (prev.has(uri)) {
-          next.add(uri);
-        }
-      });
-      return next;
-    });
-  }, [resolvedTracks, saveMode]);
-
-  const allCurrentSelected =
-    currentPlaylistTracks.length > 0 &&
-    currentPlaylistTracks.every((track) => currentSelection.has(track.spotifyUri));
-  const allNewSelected =
-    resolvedTracks.length > 0 &&
-    resolvedTracks.every((track) => newSelection.has(track.spotifyUri));
-
-  const toggleCurrentTrack = (uri: string) => {
-    setCurrentSelection((prev) => {
-      const next = new Set(prev);
-      if (next.has(uri)) {
-        next.delete(uri);
-      } else {
-        next.add(uri);
-      }
-      return next;
-    });
-  };
-
-  const toggleNewTrack = (uri: string) => {
-    setNewSelection((prev) => {
-      const next = new Set(prev);
-      if (next.has(uri)) {
-        next.delete(uri);
-      } else {
-        next.add(uri);
-      }
-      return next;
-    });
-  };
-
-  const toggleAllCurrent = (checked: boolean) => {
-    if (checked) {
-      setCurrentSelection(new Set(currentPlaylistTracks.map((track) => track.spotifyUri)));
-    } else {
-      setCurrentSelection(new Set());
-    }
-  };
-
-  const toggleAllNew = (checked: boolean) => {
-    if (checked) {
-      setNewSelection(new Set(resolvedTracks.map((track) => track.spotifyUri)));
-    } else {
-      setNewSelection(new Set());
-    }
-  };
+  const isSaveDisabled = mode !== SAVE_MODE.CREATE || isSaving || !name.trim() || uris.length === 0;
 
   const handleSave = async () => {
-    if (saveMode === 'create') {
-      if (createUris.length === 0) return;
-      if (!name.trim()) return;
-    }
-    if (saveMode === 'update') {
-      if (!targetPlaylistId) return;
-      if (updateUris.length === 0) return;
-      if (!name.trim()) return;
-    }
+    if (isSaveDisabled) return;
 
     setIsSaving(true);
     setSaveError(null);
-    setSaveSuccessUrl(null);
 
-    const payload =
-      saveMode === 'create'
-        ? {
-            playlistName: name.trim(),
-            uris: createUris,
-            isPublic: visibility === 'public',
-          }
-        : {
-            playlistId: targetPlaylistId,
-            playlistName: name.trim(),
-            uris: updateUris,
-            mode: 'replace' as const,
-          };
+    const payload: SaveRequest = {
+      playlistName: name.trim(),
+      uris,
+      isPublic: visibility === VISIBILITY.PUBLIC,
+    };
 
     try {
-      const res = await fetch('/api/spotify/playlist/save', {
+      const res = await fetch(API_ROUTES.SPOTIFY_PLAYLIST_SAVE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-
-      const data = await res.json();
+      const data: unknown = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || 'Failed to save to Spotify');
+        throw new Error(isApiErrorShape(data) ? data.message : 'Failed to save to Spotify');
       }
 
-      const id = saveMode === 'create' ? data.playlistId : targetPlaylistId;
-      setSaveSuccessUrl(`https://open.spotify.com/playlist/${id}`);
+      setSaveSuccessUrl(`https://open.spotify.com/playlist/${(data as SaveResponse).playlistId}`);
     } catch (err) {
-      const e = err as Error;
-      setSaveError(e.message || 'An unexpected error occurred during save.');
+      setSaveError(getErrorMessage(err));
     } finally {
       setIsSaving(false);
     }
   };
-
-  const handleDelete = async () => {
-    if (!targetPlaylistId) return;
-
-    const playlistLabel = selectedPlaylist?.name || 'this playlist';
-    const confirmed =
-      typeof window !== 'undefined' &&
-      window.confirm(`Delete ${playlistLabel}? This will remove it from your library.`);
-
-    if (!confirmed) return;
-
-    setIsDeleting(true);
-    setDeleteError(null);
-    setDeleteSuccess(null);
-
-    try {
-      const res = await fetch('/api/spotify/playlist/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playlistId: targetPlaylistId }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || 'Failed to delete playlist');
-      }
-
-      setDeleteSuccess(selectedPlaylist?.name || 'Playlist deleted');
-      setUserPlaylists((prev) => prev.filter((playlist) => playlist.id !== targetPlaylistId));
-      setTargetPlaylistId('');
-      onNameChange('');
-    } catch (err) {
-      const e = err as Error;
-      setDeleteError(e.message || 'An unexpected error occurred during delete.');
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const isSaveDisabled =
-    isSaving ||
-    (saveMode === 'create'
-      ? createUris.length === 0 || !name.trim()
-      : !targetPlaylistId || updateUris.length === 0 || !name.trim());
-  const isDeleteDisabled = isDeleting || !targetPlaylistId;
-
-  // Success State Override
-  if (deleteSuccess) {
-    return (
-      <div className="flex flex-col items-center justify-center p-6 space-y-4 text-center animate-in fade-in zoom-in duration-500">
-        <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
-          <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
-        </div>
-        <div className="space-y-1">
-          <h3 className="text-xl font-semibold">Playlist Deleted</h3>
-          <p className="text-sm text-muted-foreground">{deleteSuccess}</p>
-        </div>
-        <Button
-          onClick={() => setDeleteSuccess(null)}
-          className="mt-4 bg-spotify hover:bg-spotify-hover text-black font-semibold rounded-full px-8"
-        >
-          Delete Another
-        </Button>
-      </div>
-    );
-  }
 
   if (saveSuccessUrl) {
     return (
@@ -374,7 +135,9 @@ export function SavePanel({
         <div className="space-y-1">
           <h3 className="text-xl font-semibold">Playlist Saved Successfully!</h3>
           <p className="text-sm text-muted-foreground">
-            {saveMode === 'create' ? `Created new playlist: ${name}` : `Updated playlist: ${name}`}
+            {mode === SAVE_MODE.CREATE
+              ? `Created new playlist: ${name}`
+              : `Updated playlist: ${name}`}
           </p>
         </div>
         <Button
@@ -391,383 +154,187 @@ export function SavePanel({
   }
 
   return (
-    <div className="w-full space-y-6">
-      <RadioGroup
-        value={saveMode}
-        onValueChange={(val) => setSaveMode(val as 'create' | 'update' | 'delete')}
-        className="flex flex-col sm:flex-row gap-4"
-        disabled={isSaving}
+    <section className="rounded-[var(--radius-lg)] border bg-surface p-6 shadow-card sm:p-8">
+      <p className="label-text text-[11px] font-semibold uppercase text-accent-strong">
+        Step 03 — Publish
+      </p>
+      <h2 className="display-text mt-1.5 text-[clamp(22px,3vw,28px)] leading-tight text-foreground">
+        Save to Spotify
+      </h2>
+      <p className="mt-2 text-[14.5px] leading-relaxed text-muted-foreground">
+        Choose what to do with your {resolvedTracks.length} resolved track
+        {resolvedTracks.length === 1 ? '' : 's'}.
+      </p>
+
+      <div
+        role="radiogroup"
+        aria-label="Save mode"
+        className="mt-6 grid grid-cols-1 gap-2.5 sm:grid-cols-3"
       >
-        <div className="flex items-center space-x-2 border p-4 rounded-lg flex-1 cursor-pointer hover:bg-muted/50 transition-colors">
-          <RadioGroupItem value="create" id="r-create" />
-          <Label htmlFor="r-create" className="cursor-pointer font-medium w-full">
-            Create New Playlist
-          </Label>
-        </div>
-        <div className="flex items-center space-x-2 border p-4 rounded-lg flex-1 cursor-pointer hover:bg-muted/50 transition-colors">
-          <RadioGroupItem value="update" id="r-update" />
-          <Label htmlFor="r-update" className="cursor-pointer font-medium w-full">
-            Update Existing Playlist
-          </Label>
-        </div>
-        <div className="flex items-center space-x-2 border p-4 rounded-lg flex-1 cursor-pointer hover:bg-muted/50 transition-colors">
-          <RadioGroupItem value="delete" id="r-delete" />
-          <Label htmlFor="r-delete" className="cursor-pointer font-medium w-full">
-            Delete Playlist
-          </Label>
-        </div>
-      </RadioGroup>
-
-      <div className="space-y-4 p-4 bg-muted/20 border rounded-lg">
-        {saveMode === 'create' ? (
-          <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-            <div className="space-y-2">
-              <Label htmlFor="save-name">New Playlist Name</Label>
-              <Input
-                id="save-name"
-                placeholder="E.g., Summer Vibes 2026..."
-                value={name}
-                onChange={(e) => onNameChange(e.target.value)}
-                disabled={isSaving}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Visibility</Label>
-              <RadioGroup
-                value={visibility}
-                onValueChange={(val) => onVisibilityChange(val as Visibility)}
-                className="flex flex-col sm:flex-row gap-3"
-                disabled={isSaving}
-              >
-                <div className="flex items-center space-x-2 border p-3 rounded-lg flex-1 cursor-pointer hover:bg-muted/50 transition-colors">
-                  <RadioGroupItem value="private" id="vis-private" />
-                  <Label htmlFor="vis-private" className="cursor-pointer font-medium w-full">
-                    Private (default)
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-2 border p-3 rounded-lg flex-1 cursor-pointer hover:bg-muted/50 transition-colors">
-                  <RadioGroupItem value="public" id="vis-public" />
-                  <Label htmlFor="vis-public" className="cursor-pointer font-medium w-full">
-                    Public
-                  </Label>
-                </div>
-              </RadioGroup>
-            </div>
-          </div>
-        ) : saveMode === 'update' ? (
-          <div className="space-y-6 animate-in fade-in slide-in-from-top-2">
-            <div className="space-y-2">
-              <Label htmlFor="update-name">Playlist Name</Label>
-              <Input
-                id="update-name"
-                placeholder="Rename this playlist (optional)"
-                value={name}
-                onChange={(e) => onNameChange(e.target.value)}
-                disabled={isSaving || !targetPlaylistId}
-              />
-              <p className="text-xs text-muted-foreground">
-                Update the name if you want to rename this playlist.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="target-playlist">
-                Select Target Playlist (Warning: Contents will be replaced)
-              </Label>
-              {isLoadingPlaylists ? (
-                <div className="flex items-center space-x-2 text-sm text-muted-foreground p-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Loading your playlists...</span>
-                </div>
-              ) : (
-                <Select
-                  value={targetPlaylistId}
-                  onValueChange={setTargetPlaylistId}
-                  disabled={isSaving || userPlaylists.length === 0}
-                >
-                  <SelectTrigger id="target-playlist">
-                    <SelectValue placeholder="Select a playlist to overwrite" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {userPlaylists.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+        {MODE_OPTIONS.map((option) => {
+          const isActive = mode === option.value;
+          const isDanger = option.value === SAVE_MODE.DELETE;
+          const Icon = option.icon;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={isActive}
+              onClick={() => setMode(option.value)}
+              className={cn(
+                'flex flex-col items-start rounded-[var(--radius-sm)] border p-4 text-left transition-colors',
+                isActive
+                  ? isDanger
+                    ? 'border-danger bg-danger-soft shadow-[0_0_0_3px_var(--danger-soft)]'
+                    : 'border-primary bg-accent-soft shadow-[0_0_0_3px_var(--ring)]'
+                  : 'border-border bg-surface-2 hover:border-border-strong'
               )}
-              {userPlaylists.length === 0 && !isLoadingPlaylists && (
-                <p className="text-xs text-destructive mt-1">
-                  No public/editable playlists found on your account.
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-3 border rounded-lg p-4 bg-muted/10">
-              <div className="flex items-center justify-between">
-                <Label>Current Playlist Tracks ({currentPlaylistTracks.length})</Label>
-                <label className="flex items-center space-x-2 text-xs text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    checked={allCurrentSelected}
-                    onChange={(event) => toggleAllCurrent(event.target.checked)}
-                    className="h-4 w-4 accent-foreground"
-                    disabled={currentPlaylistTracks.length === 0}
-                  />
-                  <span>Include all</span>
-                </label>
-              </div>
-
-              {isLoadingCurrentTracks ? (
-                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Loading playlist tracks...</span>
-                </div>
-              ) : currentTracksError ? (
-                <div className="text-sm text-destructive">{currentTracksError}</div>
-              ) : currentPlaylistTracks.length === 0 ? (
-                <div className="text-xs text-muted-foreground">
-                  No tracks found in this playlist.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {currentPlaylistTracks.map((track) => (
-                    <div
-                      key={`current-${track.spotifyUri}`}
-                      className="flex items-center justify-between border rounded-lg px-3 py-2 bg-background"
-                    >
-                      <label className="flex items-center gap-3 flex-1 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={currentSelection.has(track.spotifyUri)}
-                          onChange={() => toggleCurrentTrack(track.spotifyUri)}
-                          className="h-4 w-4 accent-foreground"
-                        />
-                        <div className="flex items-center space-x-3 overflow-hidden">
-                          {track.displayData.imageUrl ? (
-                            <div className="relative h-9 w-9 rounded overflow-hidden flex-shrink-0">
-                              <Image
-                                src={track.displayData.imageUrl}
-                                alt={track.displayData.albumContext || track.displayData.title}
-                                fill
-                                className="object-cover"
-                              />
-                            </div>
-                          ) : (
-                            <div className="h-9 w-9 rounded bg-muted flex-shrink-0 flex items-center justify-center">
-                              <span className="text-muted-foreground text-[10px]">No img</span>
-                            </div>
-                          )}
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-medium text-sm truncate">
-                              {track.displayData.title}
-                            </span>
-                            <span className="text-xs text-muted-foreground truncate">
-                              {track.displayData.artist}
-                            </span>
-                          </div>
-                        </div>
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-3 border rounded-lg p-4 bg-muted/10">
-              <div className="flex items-center justify-between">
-                <Label>New Tracks ({resolvedTracks.length})</Label>
-                <label className="flex items-center space-x-2 text-xs text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    checked={allNewSelected}
-                    onChange={(event) => toggleAllNew(event.target.checked)}
-                    className="h-4 w-4 accent-foreground"
-                    disabled={resolvedTracks.length === 0}
-                  />
-                  <span>Include all</span>
-                </label>
-              </div>
-
-              {resolvedTracks.length === 0 ? (
-                <div className="text-xs text-muted-foreground">
-                  Resolve tracks first to include them in the update.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {resolvedTracks.map((track) => (
-                    <div
-                      key={`new-${track.spotifyUri}`}
-                      className="flex items-center justify-between border rounded-lg px-3 py-2 bg-background"
-                    >
-                      <label className="flex items-center gap-3 flex-1 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={newSelection.has(track.spotifyUri)}
-                          onChange={() => toggleNewTrack(track.spotifyUri)}
-                          className="h-4 w-4 accent-foreground"
-                        />
-                        <div className="flex items-center space-x-3 overflow-hidden">
-                          {track.displayData.imageUrl ? (
-                            <div className="relative h-9 w-9 rounded overflow-hidden flex-shrink-0">
-                              <Image
-                                src={track.displayData.imageUrl}
-                                alt={track.displayData.albumContext || track.displayData.title}
-                                fill
-                                className="object-cover"
-                              />
-                            </div>
-                          ) : (
-                            <div className="h-9 w-9 rounded bg-muted flex-shrink-0 flex items-center justify-center">
-                              <span className="text-muted-foreground text-[10px]">No img</span>
-                            </div>
-                          )}
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-medium text-sm truncate">
-                              {track.displayData.title}
-                            </span>
-                            <span className="text-xs text-muted-foreground truncate">
-                              {track.displayData.artist}
-                            </span>
-                          </div>
-                        </div>
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-3 border rounded-lg p-4 bg-muted/10">
-              <div className="flex items-center justify-between">
-                <Label>Final Playlist Preview ({finalPreviewTracks.length})</Label>
-                {dedupedCount > 0 && (
-                  <span className="text-xs text-muted-foreground">
-                    Removed {dedupedCount} duplicate{dedupedCount === 1 ? '' : 's'}
-                  </span>
+            >
+              <span
+                className={cn(
+                  'mb-2.5 grid h-[34px] w-[34px] place-items-center rounded-[9px] border text-muted-foreground',
+                  isActive
+                    ? isDanger
+                      ? 'border-transparent bg-danger text-white'
+                      : 'border-transparent bg-primary text-accent-contrast'
+                    : 'border-border bg-surface'
                 )}
-              </div>
+              >
+                <Icon className="h-[18px] w-[18px]" aria-hidden />
+              </span>
+              <span className="text-[14px] font-bold text-foreground">{option.title}</span>
+              <span className="mt-[3px] text-[12px] leading-relaxed text-muted-foreground">
+                {option.description}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
-              <TrackList
-                tracks={finalPreviewTracks}
-                readOnly
-                emptyMessage="No tracks selected yet."
+      <div className="mt-6">
+        {mode === SAVE_MODE.CREATE && (
+          <div className="space-y-5 animate-in fade-in">
+            <div className="space-y-2">
+              <Label
+                htmlFor="save-playlist-name"
+                className="block text-[12.5px] font-semibold text-foreground"
+              >
+                Playlist name
+              </Label>
+              <Input
+                id="save-playlist-name"
+                value={name}
+                onChange={(event) => onNameChange(event.target.value)}
+                placeholder="e.g. Summer Vibes 2026"
+                disabled={isSaving}
+                className="block h-auto w-full rounded-[var(--radius-sm)] border bg-surface-inset px-4 py-3 text-[14.5px] text-foreground placeholder:text-text-faint transition focus-visible:border-primary focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring dark:bg-surface-inset"
               />
             </div>
-          </div>
-        ) : (
-          <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+
             <div className="space-y-2">
-              <Label htmlFor="delete-playlist">Select Playlist to Delete</Label>
-              {isLoadingPlaylists ? (
-                <div className="flex items-center space-x-2 text-sm text-muted-foreground p-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Loading your playlists...</span>
-                </div>
-              ) : (
-                <Select
-                  value={targetPlaylistId}
-                  onValueChange={setTargetPlaylistId}
-                  disabled={isDeleting || userPlaylists.length === 0}
-                >
-                  <SelectTrigger id="delete-playlist">
-                    <SelectValue placeholder="Select a playlist to delete" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {userPlaylists.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {userPlaylists.length === 0 && !isLoadingPlaylists && (
-                <p className="text-xs text-destructive mt-1">
-                  No public/editable playlists found on your account.
-                </p>
-              )}
+              <Label className="block text-[12.5px] font-semibold text-foreground">
+                Visibility
+              </Label>
+              <div
+                role="radiogroup"
+                aria-label="Visibility"
+                className="inline-flex w-full gap-[3px] rounded-[var(--radius-sm)] border bg-surface-2 p-1"
+              >
+                {VISIBILITY_OPTIONS.map((option) => {
+                  const isActive = visibility === option.value;
+                  const Icon = option.icon;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={isActive}
+                      disabled={isSaving}
+                      onClick={() => onVisibilityChange(option.value)}
+                      className={cn(
+                        'flex flex-1 items-center justify-center gap-1.5 rounded-[calc(var(--radius-sm)-4px)] px-3.5 py-2.5 text-[13px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                        isActive
+                          ? 'bg-surface text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <Icon className="h-[15px] w-[15px]" aria-hidden />
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Deleting will remove this playlist from your library. This action cannot be undone.
+          </div>
+        )}
+
+        {mode === SAVE_MODE.UPDATE && (
+          <div className="animate-in fade-in rounded-[var(--radius-sm)] border border-dashed border-border bg-surface-2 px-5 py-10 text-center">
+            <Layers className="mx-auto h-6 w-6 text-text-faint" aria-hidden />
+            <p className="mt-3 text-[13.5px] font-semibold text-foreground">
+              Updating playlists is coming soon
+            </p>
+            <p className="mt-1 text-[12.5px] text-muted-foreground">
+              This mode will let you replace the contents of an existing playlist.
+            </p>
+          </div>
+        )}
+
+        {mode === SAVE_MODE.DELETE && (
+          <div className="animate-in fade-in rounded-[var(--radius-sm)] border border-dashed border-danger/40 bg-danger-soft px-5 py-10 text-center">
+            <Trash2 className="mx-auto h-6 w-6 text-danger" aria-hidden />
+            <p className="mt-3 text-[13.5px] font-semibold text-foreground">
+              Deleting playlists is coming soon
+            </p>
+            <p className="mt-1 text-[12.5px] text-muted-foreground">
+              This mode will let you permanently remove a playlist from your library.
             </p>
           </div>
         )}
       </div>
 
+      {mode === SAVE_MODE.CREATE && failedTracks.length > 0 && (
+        <Alert
+          variant="default"
+          className="mt-5 border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/10 dark:text-amber-400"
+        >
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {failedTracks.length} unresolved track{failedTracks.length === 1 ? '' : 's'} will be
+            skipped.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {saveError && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="mt-5">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{saveError}</AlertDescription>
         </Alert>
       )}
-      {deleteError && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{deleteError}</AlertDescription>
-        </Alert>
-      )}
 
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {saveMode === 'delete' ? (
-            selectedPlaylist ? (
-              `Deleting playlist: ${selectedPlaylist.name}`
-            ) : (
-              'Select a playlist to delete.'
-            )
-          ) : saveMode === 'update' ? (
+      <div className="my-6 h-px bg-border" aria-hidden />
+
+      <div className="flex items-center justify-between gap-4">
+        <p className="text-[13px] text-muted-foreground">
+          {mode === SAVE_MODE.CREATE
+            ? `${uris.length} track${uris.length === 1 ? '' : 's'} will be saved.`
+            : mode === SAVE_MODE.UPDATE
+              ? 'Update mode is coming soon.'
+              : 'Delete mode is coming soon.'}
+        </p>
+        <Button onClick={handleSave} disabled={isSaveDisabled} className="min-w-[150px]">
+          {isSaving ? (
             <>
-              {finalPreviewTracks.length} track
-              {finalPreviewTracks.length === 1 ? '' : 's'} in final preview
-              {dedupedCount > 0 && (
-                <span className="text-amber-600 dark:text-amber-400 ml-1">
-                  ({dedupedCount} duplicate{dedupedCount === 1 ? '' : 's'} removed)
-                </span>
-              )}
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+              Saving…
             </>
           ) : (
-            <>
-              {createUris.length} {createUris.length === 1 ? 'track' : 'tracks'} will be saved.
-              {tracks.length > createUris.length && (
-                <span className="text-amber-600 dark:text-amber-400 ml-1">
-                  ({tracks.length - createUris.length} unresolved skipped)
-                </span>
-              )}
-            </>
+            'Save to Spotify'
           )}
-        </p>
-        {saveMode === 'delete' ? (
-          <Button
-            onClick={handleDelete}
-            disabled={isDeleteDisabled}
-            variant="destructive"
-            className="min-w-[150px]"
-          >
-            {isDeleting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Deleting...
-              </>
-            ) : (
-              'Delete Playlist'
-            )}
-          </Button>
-        ) : (
-          <Button onClick={handleSave} disabled={isSaveDisabled} className="min-w-[150px]">
-            {isSaving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : saveMode === 'update' ? (
-              'Finalize Update'
-            ) : (
-              'Save to Spotify'
-            )}
-          </Button>
-        )}
+        </Button>
       </div>
-    </div>
+    </section>
   );
 }

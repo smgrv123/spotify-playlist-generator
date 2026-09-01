@@ -9,8 +9,6 @@ import { SavePanel } from '@/components/save-panel';
 import { Stepper } from '@/components/stepper';
 import { TrackList } from '@/components/track-list';
 import { TrackPasteForm } from '@/components/track-paste-form';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
 import { BUILDER_STEP, type Visibility } from '@/lib/constants';
 import * as draftStore from '@/lib/draft-store';
 import { isFailed, isResolved } from '@/lib/type-guards';
@@ -123,61 +121,67 @@ export function BuilderShell() {
             />
           )}
 
-          {draft.step === 1 && (
-            <Card className="overflow-hidden border-2 shadow-sm transition-shadow hover:shadow-md">
-              <CardHeader className="border-b bg-muted/30 pb-4">
-                <CardTitle className="text-xl">2. Review & Refine Tracks</CardTitle>
-                <CardDescription>Add, remove, and review tracks before saving.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6 pt-6">
-                <div className="space-y-4">
+          {draft.step === BUILDER_STEP.REFINE && (
+            <section className="rounded-[var(--radius-lg)] border bg-surface p-6 shadow-[var(--shadow-card)] sm:p-8">
+              <p className="label-text text-[11px] font-semibold uppercase text-accent-strong">
+                Step 02 — Curate
+              </p>
+              <h2 className="display-text mt-1.5 text-[clamp(22px,3vw,28px)] leading-tight text-foreground">
+                Review &amp; refine
+              </h2>
+              <p className="mt-2 text-[14.5px] leading-relaxed text-muted-foreground">
+                Add songs by search, drop anything that doesn&apos;t fit, and reorder until it
+                flows.
+              </p>
+
+              <div className="mt-6">
+                <AddTrackSearch onAdd={handleAddTrack} existingUris={existingUris} />
+              </div>
+
+              <div className="mt-6 flex items-center justify-between">
+                <span className="text-[12.5px] font-semibold text-foreground">Resolved tracks</span>
+                <span className="rounded-full border bg-surface-2 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-muted-foreground">
+                  {resolvedTracks.length}
+                </span>
+              </div>
+              <div className="mt-3">
+                <TrackList
+                  tracks={resolvedTracks}
+                  onRemove={handleRemoveFromSubset(resolvedTracks)}
+                  emptyMessage="No tracks yet. Search above or go back and paste a list."
+                />
+              </div>
+
+              {failedTracks.length > 0 && (
+                <div className="mt-6" data-testid="refine-unresolved-section">
                   <div className="flex items-center justify-between">
-                    <Label>Resolved Tracks ({resolvedTracks.length})</Label>
-                    <span className="hidden text-xs text-muted-foreground sm:inline-block">
-                      Drag to reorder (coming soon)
+                    <span className="text-[12.5px] font-semibold text-foreground">Unresolved</span>
+                    <span className="rounded-full border bg-surface-2 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-muted-foreground">
+                      {failedTracks.length}
                     </span>
                   </div>
-
-                  <AddTrackSearch onAdd={handleAddTrack} existingUris={existingUris} />
-
-                  <TrackList
-                    tracks={resolvedTracks}
-                    onRemove={handleRemoveFromSubset(resolvedTracks)}
-                  />
-                </div>
-
-                {failedTracks.length > 0 && (
-                  <div className="space-y-3">
-                    <Label>Unresolved Tracks ({failedTracks.length})</Label>
-                    <div className="text-xs text-muted-foreground">
-                      These tracks could not be matched on Spotify.
-                    </div>
+                  <p className="mt-1 text-[12.5px] text-text-faint">
+                    These tracks could not be matched on Spotify.
+                  </p>
+                  <div className="mt-3">
                     <TrackList
                       tracks={failedTracks}
                       onRemove={handleRemoveFromSubset(failedTracks)}
                     />
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                </div>
+              )}
+            </section>
           )}
 
-          {draft.step === 2 && (
-            <Card className="overflow-hidden border-2 shadow-sm transition-shadow hover:shadow-md">
-              <CardHeader className="border-b bg-muted/30 pb-4">
-                <CardTitle className="text-xl">3. Save to Spotify</CardTitle>
-                <CardDescription>Select destination playlist or create a new one.</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <SavePanel
-                  tracks={draft.tracks}
-                  name={draft.name}
-                  onNameChange={handleNameChange}
-                  visibility={draft.visibility}
-                  onVisibilityChange={handleVisibilityChange}
-                />
-              </CardContent>
-            </Card>
+          {draft.step === BUILDER_STEP.SAVE && (
+            <SavePanel
+              tracks={draft.tracks}
+              name={draft.name}
+              onNameChange={handleNameChange}
+              visibility={draft.visibility}
+              onVisibilityChange={handleVisibilityChange}
+            />
           )}
         </div>
 
