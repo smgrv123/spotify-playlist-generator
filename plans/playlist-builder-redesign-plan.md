@@ -318,14 +318,14 @@ Inline error alerts: save-failure, delete-failure, and current-playlist-tracks-f
 
 ### Acceptance criteria
 
-- [ ] Success state renders for save, update, and delete with the correct badge color, heading, subtext, and CTAs.
-- [ ] "Open in Spotify" links to the URL returned by the save API in a new tab.
-- [ ] "Build another" wipes the shell state, clears sessionStorage, and lands the user on step 1 with an empty draft.
-- [ ] Delete success does NOT render a cover collage (badge + text only + "Build another").
-- [ ] Save failure renders a styled inline alert within the save step card.
-- [ ] Delete failure renders a styled inline alert within the save step card.
-- [ ] Playlist-tracks fetch failure (in Update mode) renders a styled inline alert.
-- [ ] `pnpm lint` and `pnpm typecheck` pass clean.
+- [x] Success state renders for save, update, and delete with the correct badge color, heading, subtext, and CTAs.
+- [x] "Open in Spotify" links to the URL returned by the save API in a new tab.
+- [x] "Build another" wipes the shell state, clears sessionStorage, and lands the user on step 1 with an empty draft.
+- [x] Delete success does NOT render a cover collage (badge + text only + "Build another").
+- [x] Save failure renders a styled inline alert within the save step card.
+- [x] Delete failure renders a styled inline alert within the save step card.
+- [x] Playlist-tracks fetch failure (in Update mode) renders a styled inline alert.
+- [x] `pnpm lint` and `pnpm typecheck` pass clean.
 - [ ] Manual verification: trigger save success, then "Build another"; trigger delete success; force a failure (e.g. invalid token) and confirm inline alert.
 
 ---

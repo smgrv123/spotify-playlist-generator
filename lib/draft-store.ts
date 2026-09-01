@@ -65,10 +65,22 @@ export function update(updater: (prev: Draft) => Draft): void {
 
 /**
  * Resets the in-memory cache to `INITIAL_DRAFT` and clears the persisted
- * copy. Prep for Phase 12's "Build another" flow, which calls this as a
- * one-liner (`draftStore.reset()`) to start a fresh draft.
+ * copy. Used by Phase 12's "Build another" flow (`draftStore.reset()`) to
+ * start a fresh draft.
+ *
+ * Cancels any in-flight debounced `scheduleDraftSave` first — otherwise a
+ * write queued just before the reset (e.g. the user was still typing a name)
+ * would fire ~300ms later and resurrect the old draft in sessionStorage.
+ * Notifies subscribers afterward so `useSyncExternalStore` consumers (i.e.
+ * `BuilderShell`) actually re-render with the reset snapshot; without this,
+ * nothing schedules the follow-up render since no other state changed.
  */
 export function reset(): void {
+  if (saveTimeout !== null) {
+    clearTimeout(saveTimeout);
+    saveTimeout = null;
+  }
   cachedDraft = null;
   clearDraft();
+  for (const listener of draftListeners) listener();
 }

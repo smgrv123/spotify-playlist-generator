@@ -81,6 +81,7 @@ export function BuilderShell() {
   const handleNameChange = (name: string) => draftStore.update((prev) => ({ ...prev, name }));
   const handleVisibilityChange = (visibility: Visibility) =>
     draftStore.update((prev) => ({ ...prev, visibility }));
+  const handleBuildAnother = () => draftStore.reset();
 
   const resolvedTracks = draft.tracks.filter(isResolved);
   const failedTracks = draft.tracks.filter(isFailed);
@@ -181,6 +182,7 @@ export function BuilderShell() {
               onNameChange={handleNameChange}
               visibility={draft.visibility}
               onVisibilityChange={handleVisibilityChange}
+              onBuildAnother={handleBuildAnother}
             />
           )}
         </div>

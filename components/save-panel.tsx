@@ -33,6 +33,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { CoverCollage } from '@/components/cover-collage';
 import { TrackList } from '@/components/track-list';
 import { useDeletePlaylist } from '@/hooks/use-delete-playlist';
 import { usePlaylistTracks } from '@/hooks/use-playlist-tracks';
@@ -56,6 +57,8 @@ interface SavePanelProps {
   onNameChange: (name: string) => void;
   visibility: Visibility;
   onVisibilityChange: (visibility: Visibility) => void;
+  /** "Build another" CTA on the success state — resets the shell's Draft. */
+  onBuildAnother: () => void;
 }
 
 interface ModeOption {
@@ -201,6 +204,78 @@ function TargetPlaylistPicker({
   );
 }
 
+interface SaveSuccessStateProps {
+  /** Drives badge/icon color — accent for save/update, danger for delete. */
+  variant: 'accent' | 'danger';
+  heading: string;
+  subtext: string;
+  /** Cover collage input; omit (null) for delete, which shows badge + text only. */
+  coverTracks: ResolvedTrack[] | null;
+  /** "Open in Spotify" target; omit (null) for delete, which has no destination. */
+  openUrl: string | null;
+  onBuildAnother: () => void;
+}
+
+/**
+ * Unified success layout for all three save-step outcomes (create, update,
+ * delete) — a single parameterized component instead of three near-identical
+ * copy-pasted blocks. Centered badge + heading + subtext, an optional mini
+ * cover collage, and the "Open in Spotify" / "Build another" CTAs.
+ */
+function SaveSuccessState({
+  variant,
+  heading,
+  subtext,
+  coverTracks,
+  openUrl,
+  onBuildAnother,
+}: SaveSuccessStateProps) {
+  const isDanger = variant === 'danger';
+  const Icon = isDanger ? Trash2 : CheckCircle;
+
+  return (
+    <section className="rounded-[var(--radius-lg)] border bg-surface p-6 shadow-card sm:p-8">
+      <div className="flex flex-col items-center gap-5 py-4 text-center animate-in fade-in zoom-in-95 duration-500">
+        <div
+          className={cn(
+            'grid h-16 w-16 flex-shrink-0 place-items-center rounded-full',
+            isDanger ? 'bg-danger-soft text-danger' : 'bg-accent-soft text-accent-strong'
+          )}
+        >
+          <Icon className="h-7 w-7" aria-hidden />
+        </div>
+
+        <div className="space-y-1.5">
+          <h2 className="display-text text-[clamp(20px,3vw,26px)] leading-tight text-foreground">
+            {heading}
+          </h2>
+          <p className="text-[14.5px] leading-relaxed text-muted-foreground">{subtext}</p>
+        </div>
+
+        {coverTracks && (
+          <div className="w-[150px]">
+            <CoverCollage tracks={coverTracks} />
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          {openUrl && (
+            <Button asChild className="rounded-full px-6">
+              <a href={openUrl} target="_blank" rel="noopener noreferrer">
+                Open in Spotify
+                <ExternalLink className="ml-2 h-4 w-4" aria-hidden />
+              </a>
+            </Button>
+          )}
+          <Button variant="outline" className="rounded-full px-6" onClick={onBuildAnother}>
+            Build another
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /**
  * Save-step card, restyled to the Vibecrafter handoff. Owns its own section
  * wrapper (eyebrow + heading), matching the pattern `TrackPasteForm` and the
@@ -217,6 +292,7 @@ export function SavePanel({
   onNameChange,
   visibility,
   onVisibilityChange,
+  onBuildAnother,
 }: SavePanelProps) {
   const [mode, setMode] = useState<SaveMode>(SAVE_MODE.CREATE);
 
@@ -367,10 +443,6 @@ export function SavePanel({
   const selectedTargetPlaylist = playlists.find((playlist) => playlist.id === targetPlaylistId);
   const isDeleteDisabled = isDeleting || !targetPlaylistId;
 
-  const saveSuccessUrl = saveData
-    ? `https://open.spotify.com/playlist/${saveData.playlistId}`
-    : null;
-
   const handleSave = () => {
     if (isSaveDisabled) return;
 
@@ -391,50 +463,34 @@ export function SavePanel({
     });
   };
 
-  if (saveSuccessUrl) {
+  if (saveData) {
+    const savedTracks = mode === SAVE_MODE.UPDATE ? finalPreviewTracks : resolvedTracks;
     return (
-      <div className="flex flex-col items-center justify-center p-6 space-y-4 text-center animate-in fade-in zoom-in duration-500">
-        <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
-          <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
-        </div>
-        <div className="space-y-1">
-          <h3 className="text-xl font-semibold">Playlist Saved Successfully!</h3>
-          <p className="text-sm text-muted-foreground">
-            {mode === SAVE_MODE.CREATE
-              ? `Created new playlist: ${name}`
-              : `Updated playlist: ${name}`}
-          </p>
-        </div>
-        <Button
-          asChild
-          className="mt-4 bg-spotify hover:bg-spotify-hover text-black font-semibold rounded-full px-8"
-        >
-          <a href={saveSuccessUrl} target="_blank" rel="noopener noreferrer">
-            Open in Spotify
-            <ExternalLink className="ml-2 h-4 w-4" />
-          </a>
-        </Button>
-      </div>
+      <SaveSuccessState
+        variant="accent"
+        heading={mode === SAVE_MODE.UPDATE ? 'Playlist updated!' : 'Playlist saved!'}
+        subtext={`"${name}" • ${savedTracks.length} track${savedTracks.length === 1 ? '' : 's'}`}
+        coverTracks={savedTracks}
+        openUrl={`https://open.spotify.com/playlist/${saveData.playlistId}`}
+        onBuildAnother={onBuildAnother}
+      />
     );
   }
 
-  // Plain/unstyled for now — restyled alongside saveSuccessUrl's block in
-  // Phase 12's unified success-state component.
   if (deleteData) {
     return (
-      <div className="flex flex-col items-center justify-center p-6 space-y-4 text-center animate-in fade-in zoom-in duration-500">
-        <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
-          <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
-        </div>
-        <div className="space-y-1">
-          <h3 className="text-xl font-semibold">Playlist deleted</h3>
-          <p className="text-sm text-muted-foreground">
-            {deletedPlaylistName
-              ? `"${deletedPlaylistName}" was removed from your library.`
-              : 'The playlist was removed from your library.'}
-          </p>
-        </div>
-      </div>
+      <SaveSuccessState
+        variant="danger"
+        heading="Playlist deleted!"
+        subtext={
+          deletedPlaylistName
+            ? `"${deletedPlaylistName}" was removed from your library.`
+            : 'The playlist was removed from your library.'
+        }
+        coverTracks={null}
+        openUrl={null}
+        onBuildAnother={onBuildAnother}
+      />
     );
   }
 
