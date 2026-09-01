@@ -35,6 +35,7 @@ export interface SpotifyPlaylistItem {
   collaborative?: boolean;
   owner?: { id?: string | null };
   images?: Array<{ url: string }>;
+  tracks?: { total: number };
 }
 
 export interface SpotifyPlaylistsResponse {

@@ -2,6 +2,7 @@
 
 import {
   AlertCircle,
+  Check,
   CheckCircle,
   ExternalLink,
   Globe,
@@ -12,15 +13,27 @@ import {
   Trash2,
   type LucideIcon,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { TrackList } from '@/components/track-list';
+import { usePlaylistTracks } from '@/hooks/use-playlist-tracks';
+import { usePlaylists } from '@/hooks/use-playlists';
 import { useSavePlaylist } from '@/hooks/use-save-playlist';
-import { SAVE_MODE, VISIBILITY, type SaveMode, type Visibility } from '@/lib/constants';
+import { coverGradient } from '@/lib/cover-art';
+import {
+  SAVE_MODE,
+  UPDATE_MODE,
+  VISIBILITY,
+  type SaveMode,
+  type Visibility,
+} from '@/lib/constants';
 import { getErrorMessage, isFailed, isResolved } from '@/lib/type-guards';
 import type { FailedTrack, ResolvedTrack } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -74,9 +87,8 @@ const VISIBILITY_OPTIONS: VisibilityOption[] = [
  *
  * `mode` is owned locally (not lifted into the shell's `Draft`) — see the
  * `Draft` docstring in `lib/types.ts`, which defers persisting save-step
- * concerns to a later phase. Only Create mode is wired to the save API in
- * this phase; Update and Delete render minimal stub bodies and become
- * functional in Phases 10 and 11.
+ * concerns to a later phase. Create and Update modes are wired to the save
+ * API; Delete renders a minimal stub body and becomes functional in Phase 11.
  */
 export function SavePanel({
   tracks,
@@ -87,6 +99,13 @@ export function SavePanel({
 }: SavePanelProps) {
   const [mode, setMode] = useState<SaveMode>(SAVE_MODE.CREATE);
 
+  // Update mode: target-playlist selection + per-row checkbox selection sets.
+  // Legitimate local/derived component state (not data fetching), so it
+  // stays as plain useState rather than moving into a hook.
+  const [targetPlaylistId, setTargetPlaylistId] = useState('');
+  const [currentSelection, setCurrentSelection] = useState<Set<string>>(new Set());
+  const [newSelection, setNewSelection] = useState<Set<string>>(new Set());
+
   const {
     mutate: savePlaylist,
     isPending: isSaving,
@@ -94,11 +113,124 @@ export function SavePanel({
     data: saveData,
   } = useSavePlaylist();
 
+  const {
+    playlists,
+    isLoading: isLoadingPlaylists,
+    error: playlistsError,
+  } = usePlaylists({
+    enabled: mode === SAVE_MODE.UPDATE,
+  });
+  const {
+    tracks: currentPlaylistTracks,
+    isLoading: isLoadingCurrentTracks,
+    error: currentTracksError,
+  } = usePlaylistTracks(mode === SAVE_MODE.UPDATE ? targetPlaylistId || null : null);
+
   const resolvedTracks = tracks.filter(isResolved);
   const failedTracks = tracks.filter(isFailed);
   const uris = resolvedTracks.map((track) => track.spotifyUri);
 
-  const isSaveDisabled = mode !== SAVE_MODE.CREATE || isSaving || !name.trim() || uris.length === 0;
+  // Reset the current-tracks selection to "all selected" whenever the target
+  // playlist's tracks (re)load. `currentPlaylistTracks` only changes identity
+  // on a real data change (TanStack Query's structural sharing keeps the same
+  // reference across no-op background refetches), so this doesn't clobber
+  // in-progress de-selections. Adjusting state during render (React's
+  // documented pattern for "resetting state when a dependency changes")
+  // rather than in a useEffect avoids an extra commit + render pass.
+  const [syncedCurrentTracks, setSyncedCurrentTracks] = useState<ResolvedTrack[] | null>(null);
+  if (syncedCurrentTracks !== currentPlaylistTracks) {
+    setSyncedCurrentTracks(currentPlaylistTracks);
+    setCurrentSelection(new Set(currentPlaylistTracks.map((track) => track.spotifyUri)));
+  }
+
+  // Select all resolved new tracks by default, but preserve prior
+  // de-selections when the resolved set changes (e.g. a track was removed
+  // back in the refine step) instead of blowing the selection away. Same
+  // render-time-adjustment pattern as above, gated to Update mode so
+  // switching modes doesn't touch the selection.
+  const [syncedNewUris, setSyncedNewUris] = useState<string[] | null>(null);
+  if (mode === SAVE_MODE.UPDATE && syncedNewUris !== uris) {
+    setSyncedNewUris(uris);
+    setNewSelection((prev) => {
+      if (uris.length === 0) return new Set();
+      if (prev.size === 0) return new Set(uris);
+
+      const previouslyAllSelected = uris.every((uri) => prev.has(uri));
+      if (previouslyAllSelected) return new Set(uris);
+
+      const next = new Set<string>();
+      uris.forEach((uri) => {
+        if (prev.has(uri)) next.add(uri);
+      });
+      return next;
+    });
+  }
+
+  // Sync the playlist-name field to the selected target's name so "Update
+  // playlist" defaults to renaming-in-place rather than a blank name.
+  useEffect(() => {
+    if (mode !== SAVE_MODE.UPDATE || !targetPlaylistId) return;
+    const selected = playlists.find((playlist) => playlist.id === targetPlaylistId);
+    if (selected) onNameChange(selected.name);
+  }, [mode, targetPlaylistId, playlists, onNameChange]);
+
+  const selectedCurrentTracks = currentPlaylistTracks.filter((track) =>
+    currentSelection.has(track.spotifyUri)
+  );
+  const selectedNewTracks = resolvedTracks.filter((track) => newSelection.has(track.spotifyUri));
+  const finalPreviewTracks = (() => {
+    const seen = new Set<string>();
+    const merged: ResolvedTrack[] = [];
+    [...selectedCurrentTracks, ...selectedNewTracks].forEach((track) => {
+      if (seen.has(track.spotifyUri)) return;
+      seen.add(track.spotifyUri);
+      merged.push(track);
+    });
+    return merged;
+  })();
+  const dedupedCount =
+    selectedCurrentTracks.length + selectedNewTracks.length - finalPreviewTracks.length;
+  const updateUris = finalPreviewTracks.map((track) => track.spotifyUri);
+
+  const allCurrentSelected =
+    currentPlaylistTracks.length > 0 &&
+    currentPlaylistTracks.every((track) => currentSelection.has(track.spotifyUri));
+  const allNewSelected =
+    resolvedTracks.length > 0 &&
+    resolvedTracks.every((track) => newSelection.has(track.spotifyUri));
+
+  const toggleCurrentTrack = (uri: string) => {
+    setCurrentSelection((prev) => {
+      const next = new Set(prev);
+      if (next.has(uri)) next.delete(uri);
+      else next.add(uri);
+      return next;
+    });
+  };
+  const toggleNewTrack = (uri: string) => {
+    setNewSelection((prev) => {
+      const next = new Set(prev);
+      if (next.has(uri)) next.delete(uri);
+      else next.add(uri);
+      return next;
+    });
+  };
+  const toggleAllCurrent = (checked: boolean) => {
+    setCurrentSelection(
+      checked ? new Set(currentPlaylistTracks.map((track) => track.spotifyUri)) : new Set()
+    );
+  };
+  const toggleAllNew = (checked: boolean) => {
+    setNewSelection(checked ? new Set(resolvedTracks.map((track) => track.spotifyUri)) : new Set());
+  };
+
+  const isSaveDisabled =
+    isSaving ||
+    (mode === SAVE_MODE.CREATE
+      ? !name.trim() || uris.length === 0
+      : mode === SAVE_MODE.UPDATE
+        ? !targetPlaylistId || !name.trim() || updateUris.length === 0
+        : true); // Delete mode ships in Phase 11.
 
   const saveSuccessUrl = saveData
     ? `https://open.spotify.com/playlist/${saveData.playlistId}`
@@ -106,6 +238,16 @@ export function SavePanel({
 
   const handleSave = () => {
     if (isSaveDisabled) return;
+
+    if (mode === SAVE_MODE.UPDATE) {
+      savePlaylist({
+        playlistId: targetPlaylistId,
+        playlistName: name.trim(),
+        uris: updateUris,
+        mode: UPDATE_MODE.REPLACE,
+      });
+      return;
+    }
 
     savePlaylist({
       playlistName: name.trim(),
@@ -259,14 +401,166 @@ export function SavePanel({
         )}
 
         {mode === SAVE_MODE.UPDATE && (
-          <div className="animate-in fade-in rounded-[var(--radius-sm)] border border-dashed border-border bg-surface-2 px-5 py-10 text-center">
-            <Layers className="mx-auto h-6 w-6 text-text-faint" aria-hidden />
-            <p className="mt-3 text-[13.5px] font-semibold text-foreground">
-              Updating playlists is coming soon
-            </p>
-            <p className="mt-1 text-[12.5px] text-muted-foreground">
-              This mode will let you replace the contents of an existing playlist.
-            </p>
+          <div className="space-y-5 animate-in fade-in">
+            <div className="space-y-2">
+              <Label
+                htmlFor="update-playlist-name"
+                className="block text-[12.5px] font-semibold text-foreground"
+              >
+                Playlist name
+              </Label>
+              <Input
+                id="update-playlist-name"
+                value={name}
+                onChange={(event) => onNameChange(event.target.value)}
+                placeholder="Pick a playlist below to load its name"
+                disabled={isSaving || !targetPlaylistId}
+                className="block h-auto w-full rounded-[var(--radius-sm)] border bg-surface-inset px-4 py-3 text-[14.5px] text-foreground placeholder:text-text-faint transition focus-visible:border-primary focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring dark:bg-surface-inset"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="block text-[12.5px] font-semibold text-foreground">
+                Target playlist
+              </Label>
+              {isLoadingPlaylists ? (
+                <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-dashed border-border bg-surface-2 px-4 py-6 text-[13px] text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  Loading your playlists…
+                </div>
+              ) : playlistsError ? (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{getErrorMessage(playlistsError)}</AlertDescription>
+                </Alert>
+              ) : playlists.length === 0 ? (
+                <p className="rounded-[var(--radius-sm)] border border-dashed border-border bg-surface-2 px-4 py-6 text-[13px] text-muted-foreground">
+                  No editable playlists found on your account.
+                </p>
+              ) : (
+                <ScrollArea className="h-[220px] w-full rounded-[var(--radius-sm)]">
+                  <div className="space-y-2 pr-3">
+                    {playlists.map((playlist) => {
+                      const isActive = playlist.id === targetPlaylistId;
+                      return (
+                        <button
+                          key={playlist.id}
+                          type="button"
+                          onClick={() => setTargetPlaylistId(playlist.id)}
+                          disabled={isSaving}
+                          className={cn(
+                            'flex w-full items-center gap-3 rounded-[var(--radius-sm)] border p-3 text-left transition-colors',
+                            isActive
+                              ? 'border-primary bg-accent-soft shadow-[0_0_0_3px_var(--ring)]'
+                              : 'border-border bg-surface hover:border-border-strong'
+                          )}
+                        >
+                          <div
+                            className="h-10 w-10 flex-shrink-0 rounded-[8px] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]"
+                            style={{ background: coverGradient(playlist.name) }}
+                            aria-hidden
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[13.5px] font-semibold text-foreground">
+                              {playlist.name}
+                            </p>
+                            {playlist.trackCount !== null && (
+                              <p className="mt-0.5 text-[12px] text-muted-foreground">
+                                {playlist.trackCount} track{playlist.trackCount === 1 ? '' : 's'}
+                              </p>
+                            )}
+                          </div>
+                          {isActive && (
+                            <span
+                              className="grid h-5 w-5 flex-shrink-0 place-items-center rounded-full bg-primary text-accent-contrast"
+                              aria-hidden
+                            >
+                              <Check className="h-3 w-3" />
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-[12.5px] font-semibold text-foreground">
+                  Current tracks ({currentPlaylistTracks.length})
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="select-all-current"
+                    checked={allCurrentSelected}
+                    onCheckedChange={(checked) => toggleAllCurrent(checked === true)}
+                    disabled={currentPlaylistTracks.length === 0}
+                  />
+                  <Label
+                    htmlFor="select-all-current"
+                    className="cursor-pointer text-[12px] font-normal text-muted-foreground"
+                  >
+                    Select all
+                  </Label>
+                </div>
+              </div>
+              {isLoadingCurrentTracks ? (
+                <div className="flex h-[220px] items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-dashed border-border bg-surface-2 text-[13px] text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  Loading current tracks…
+                </div>
+              ) : currentTracksError ? (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{getErrorMessage(currentTracksError)}</AlertDescription>
+                </Alert>
+              ) : (
+                <TrackList
+                  tracks={currentPlaylistTracks}
+                  readOnly
+                  heightClassName="h-[220px]"
+                  selectedUris={currentSelection}
+                  onToggleSelect={toggleCurrentTrack}
+                  emptyMessage={
+                    targetPlaylistId
+                      ? 'This playlist has no tracks yet.'
+                      : 'Pick a target playlist above to see its tracks.'
+                  }
+                />
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-[12.5px] font-semibold text-foreground">
+                  New tracks ({resolvedTracks.length})
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="select-all-new"
+                    checked={allNewSelected}
+                    onCheckedChange={(checked) => toggleAllNew(checked === true)}
+                    disabled={resolvedTracks.length === 0}
+                  />
+                  <Label
+                    htmlFor="select-all-new"
+                    className="cursor-pointer text-[12px] font-normal text-muted-foreground"
+                  >
+                    Select all
+                  </Label>
+                </div>
+              </div>
+              <TrackList
+                tracks={resolvedTracks}
+                readOnly
+                heightClassName="h-[220px]"
+                selectedUris={newSelection}
+                onToggleSelect={toggleNewTrack}
+                emptyMessage="Resolve tracks in the previous step to include them here."
+              />
+            </div>
           </div>
         )}
 
@@ -307,11 +601,21 @@ export function SavePanel({
 
       <div className="flex items-center justify-between gap-4">
         <p className="text-[13px] text-muted-foreground">
-          {mode === SAVE_MODE.CREATE
-            ? `${uris.length} track${uris.length === 1 ? '' : 's'} will be saved.`
-            : mode === SAVE_MODE.UPDATE
-              ? 'Update mode is coming soon.'
-              : 'Delete mode is coming soon.'}
+          {mode === SAVE_MODE.CREATE ? (
+            `${uris.length} track${uris.length === 1 ? '' : 's'} will be saved.`
+          ) : mode === SAVE_MODE.UPDATE ? (
+            <>
+              {finalPreviewTracks.length} track{finalPreviewTracks.length === 1 ? '' : 's'} will be
+              saved.
+              {dedupedCount > 0 && (
+                <span className="ml-1 text-amber-600 dark:text-amber-400">
+                  ({dedupedCount} duplicate{dedupedCount === 1 ? '' : 's'} removed)
+                </span>
+              )}
+            </>
+          ) : (
+            'Delete mode is coming soon.'
+          )}
         </p>
         <Button onClick={handleSave} disabled={isSaveDisabled} className="min-w-[150px]">
           {isSaving ? (
@@ -319,6 +623,8 @@ export function SavePanel({
               <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
               Saving…
             </>
+          ) : mode === SAVE_MODE.UPDATE ? (
+            'Update playlist'
           ) : (
             'Save to Spotify'
           )}

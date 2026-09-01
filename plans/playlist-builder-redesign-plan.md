@@ -269,14 +269,14 @@ The two-checkbox-list selective-merge UI is preserved end-to-end: current tracks
 
 ### Acceptance criteria
 
-- [ ] Update mode renders the target picker as a styled row list with checkmarks for the selected target.
-- [ ] Picking a target triggers the existing `/api/spotify/playlist/tracks` fetch.
-- [ ] Current-tracks list and new-tracks list both render with per-row checkboxes and a select-all toggle.
-- [ ] Per-row toggle correctly mutates the corresponding selection set.
-- [ ] Merge dedupes by URI; duplicate count is shown to the user (existing summary preserved).
-- [ ] Update button is disabled when zero tracks would be saved or when no target is selected.
-- [ ] Successful update routes through to the existing success-state component (restyle in Phase 12).
-- [ ] `pnpm lint` and `pnpm typecheck` pass clean.
+- [x] Update mode renders the target picker as a styled row list with checkmarks for the selected target.
+- [x] Picking a target triggers the existing `/api/spotify/playlist/tracks` fetch.
+- [x] Current-tracks list and new-tracks list both render with per-row checkboxes and a select-all toggle.
+- [x] Per-row toggle correctly mutates the corresponding selection set.
+- [x] Merge dedupes by URI; duplicate count is shown to the user (existing summary preserved).
+- [x] Update button is disabled when zero tracks would be saved or when no target is selected.
+- [x] Successful update routes through to the existing success-state component (restyle in Phase 12).
+- [x] `pnpm lint` and `pnpm typecheck` pass clean.
 - [ ] Manual verification: update an existing playlist with a mix of kept and dropped tracks from both lists.
 
 ---

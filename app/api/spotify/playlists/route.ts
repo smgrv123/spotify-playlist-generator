@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
       public: !!playlist.public,
       description: playlist.description || '',
       imageUrl: playlist.images?.[0]?.url || null,
+      trackCount: playlist.tracks?.total ?? null,
     }));
 
     logger.info('Fetch user playlists complete', { reqId, returned: mappedPlaylists.length });
