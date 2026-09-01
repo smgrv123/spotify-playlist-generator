@@ -5,7 +5,7 @@ import type { Draft } from './types';
 /**
  * Test fixture covering every branch of `draftSchema`: a resolved track with
  * full display data, a failed track with a query object, a non-default
- * visibility/mode, and non-zero step/maxReached/target.
+ * visibility, and non-zero step/maxReached.
  */
 const SAMPLE_DRAFT: Draft = {
   tracks: [
@@ -31,8 +31,6 @@ const SAMPLE_DRAFT: Draft = {
   visibility: 'public',
   step: 1,
   maxReached: 2,
-  mode: 'update',
-  target: 'playlist-xyz',
 };
 
 /**

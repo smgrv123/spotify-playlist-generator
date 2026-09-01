@@ -15,6 +15,9 @@ export type SaveResponse = z.infer<typeof schemas.saveResponseSchema>;
 export type DeletePlaylistRequest = z.infer<typeof schemas.deletePlaylistRequestSchema>;
 export type DeletePlaylistResponse = z.infer<typeof schemas.deletePlaylistResponseSchema>;
 
+export type PlaylistDetail = z.infer<typeof schemas.playlistDetailSchema>;
+export type PlaylistTracksResponse = z.infer<typeof schemas.playlistTracksResponseSchema>;
+
 /**
  * Authenticated Spotify user profile surfaced to the client via
  * `GET /api/auth/session`. Derived from Spotify's `/v1/me` response.
@@ -49,7 +52,9 @@ export interface SessionResponse {
  * - `step`: the active step (0=Prepare, 1=Refine, 2=Save).
  * - `maxReached`: the furthest step the user has unlocked; gating in the
  *   stepper uses this to allow navigation backward but not skip ahead.
- * - `mode`/`target`: save-step concerns (kept in the draft so they can be
- *   persisted in later phases). Defaults are `'create'` and `''`.
+ *
+ * The save step is create-only — editing an existing playlist lives on
+ * `/playlists/[id]` — so the draft carries no save-mode or target-playlist
+ * fields.
  */
 export type Draft = z.infer<typeof schemas.draftSchema>;

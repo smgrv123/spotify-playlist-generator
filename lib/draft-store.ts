@@ -18,8 +18,6 @@ const INITIAL_DRAFT: Draft = {
   visibility: 'private',
   step: 0,
   maxReached: 0,
-  mode: 'create',
-  target: '',
 };
 
 const DRAFT_SAVE_DEBOUNCE_MS = 300;

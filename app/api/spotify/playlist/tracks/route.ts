@@ -2,7 +2,7 @@ import { fail, normalizeError, ok } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
 import { SpotifyPlaylistTracksResponse } from '@/lib/spotify-types';
 import { spotifyClient } from '@/lib/spotify-client';
-import { ResolvedTrack } from '@/lib/types';
+import { PlaylistTracksResponse, ResolvedTrack } from '@/lib/types';
 import crypto from 'crypto';
 import { NextRequest } from 'next/server';
 
@@ -17,6 +17,9 @@ export async function GET(request: NextRequest) {
     }
 
     const tracks: ResolvedTrack[] = [];
+    // Items dropped below have no Spotify track URI to re-add, so rewriting the
+    // playlist loses them. Counted across every page so the UI can warn first.
+    let skippedCount = 0;
     let nextUrl: string | null = `/playlists/${encodeURIComponent(playlistId)}/items?limit=100`;
 
     while (nextUrl) {
@@ -26,7 +29,11 @@ export async function GET(request: NextRequest) {
 
       items.forEach((item) => {
         const content = item.item ?? item.track;
-        if (!content || content.type !== 'track' || !content.artists) return;
+        // Podcast episodes, local files and unavailable items all land here.
+        if (!content || content.type !== 'track' || !content.artists) {
+          skippedCount += 1;
+          return;
+        }
 
         tracks.push({
           status: 'resolved',
@@ -45,8 +52,9 @@ export async function GET(request: NextRequest) {
       nextUrl = data.next;
     }
 
-    logger.info('Fetch playlist tracks complete', { reqId, count: tracks.length });
-    return ok({ tracks });
+    logger.info('Fetch playlist tracks complete', { reqId, count: tracks.length, skippedCount });
+    const response: PlaylistTracksResponse = { tracks, skippedCount };
+    return ok(response);
   } catch (error) {
     logger.error('Fetch playlist tracks failed', error, { reqId });
     return normalizeError(error);

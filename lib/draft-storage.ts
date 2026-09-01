@@ -19,7 +19,7 @@ import type { Draft } from './types';
  * broken state.
  */
 
-export const DRAFT_STORAGE_KEY = 'spotify-playlist-builder-draft-v1';
+export const DRAFT_STORAGE_KEY = 'spotify-playlist-builder-draft-v2';
 
 function safeSessionStorage(): Storage | null {
   if (typeof window === 'undefined') return null;

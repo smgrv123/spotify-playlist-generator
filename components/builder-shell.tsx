@@ -6,11 +6,11 @@ import { useSyncExternalStore } from 'react';
 
 import { AddTrackSearch } from '@/components/add-track-search';
 import { PreviewRail } from '@/components/preview-rail';
-import { SavePanel } from '@/components/save-panel';
+import { CreatePlaylistForm } from '@/components/save/create-playlist-form';
 import { Stepper } from '@/components/stepper';
 import { TrackList } from '@/components/track-list';
 import { TrackPasteForm } from '@/components/track-paste-form';
-import { BUILDER_STEP, SAVE_MODE, type Visibility } from '@/lib/constants';
+import { BUILDER_STEP, type Visibility } from '@/lib/constants';
 import * as draftStore from '@/lib/draft-store';
 import { isFailed, isResolved } from '@/lib/type-guards';
 import type { BuilderStep, FailedTrack, ResolvedTrack } from '@/lib/types';
@@ -20,11 +20,10 @@ type TrackItem = ResolvedTrack | FailedTrack;
 /**
  * Top-level builder UI rendered on `/` for authenticated users.
  *
- * Owns the unified Draft state (tracks, name, visibility, step, maxReached,
- * mode, target) and threads slices into the existing step cards. Only the
- * active step is mounted at a time, gated by the `Stepper`. The existing
- * step-card internals (TrackPasteForm / AddTrackSearch+TrackList / SavePanel)
- * are preserved as-is — restyling happens in Phase 6+.
+ * Owns the unified Draft state (tracks, name, visibility, step, maxReached)
+ * and threads slices into the step cards. Only the active step is mounted at
+ * a time, gated by the `Stepper`. Each step card (TrackPasteForm /
+ * AddTrackSearch+TrackList / CreatePlaylistForm) owns its own internals.
  *
  * Layout: at the `2pane` breakpoint (941px) the workspace is a two-pane grid
  * (active step card left, `PreviewRail` right). Below that it collapses to a
@@ -63,21 +62,6 @@ export function BuilderShell() {
         maxReached: prev.maxReached >= BUILDER_STEP.REFINE ? prev.maxReached : BUILDER_STEP.REFINE,
       };
     });
-  };
-
-  /**
-   * Entry point for users who only want to edit/delete an existing playlist
-   * and have no tracks to paste yet — jumps straight to Save pre-set to
-   * Update mode, unlocking it via `maxReached` the same way `handleTracksResolved`
-   * unlocks Refine.
-   */
-  const handleEditExisting = () => {
-    draftStore.update((prev) => ({
-      ...prev,
-      step: BUILDER_STEP.SAVE,
-      maxReached: prev.maxReached >= BUILDER_STEP.SAVE ? prev.maxReached : BUILDER_STEP.SAVE,
-      mode: SAVE_MODE.UPDATE,
-    }));
   };
 
   const handleAddTrack = (track: ResolvedTrack) => {
@@ -137,7 +121,6 @@ export function BuilderShell() {
           {draft.step === BUILDER_STEP.PREPARE && (
             <TrackPasteForm
               onTracksResolved={handleTracksResolved}
-              onEditExisting={handleEditExisting}
               unresolvedSlot={
                 failedTracks.length > 0 ? (
                   <section
@@ -219,14 +202,13 @@ export function BuilderShell() {
           )}
 
           {draft.step === BUILDER_STEP.SAVE && (
-            <SavePanel
+            <CreatePlaylistForm
               tracks={draft.tracks}
               name={draft.name}
               onNameChange={handleNameChange}
               visibility={draft.visibility}
               onVisibilityChange={handleVisibilityChange}
               onBuildAnother={handleBuildAnother}
-              initialMode={draft.mode}
             />
           )}
         </div>

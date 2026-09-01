@@ -51,11 +51,29 @@ interface TrackListProps {
    * are ever sortable — omit this prop for unresolved/failed lists.
    */
   onReorder?: (oldIndex: number, newIndex: number) => void;
+  /**
+   * Caller-supplied row identities, positionally parallel to `tracks`.
+   *
+   * The default identity (Spotify URI) is *not* duplicate-safe: a playlist may
+   * legitimately hold the same track twice, and both the React `key` and the
+   * `ids.indexOf(...)` lookup behind drag-and-drop then resolve to the first
+   * occurrence — so dragging the second copy moves the first. Callers that can
+   * hold duplicates (the `/playlists/[id]` editor, whose rows carry a UUID
+   * `rowId`) pass those ids here instead.
+   *
+   * Optional by design: callers whose lists cannot contain duplicates pass
+   * nothing and keep the URI-based identity unchanged.
+   */
+  rowIds?: string[];
 }
 
-/** Stable per-row id: resolved tracks use their Spotify URI; failed tracks (never sortable) fall back to a positional id. */
-function trackId(track: TrackItem, index: number): string {
-  return isResolved(track) ? track.spotifyUri : `failed-${index}`;
+/**
+ * Stable per-row id. An explicit `rowIds[index]` wins when the caller supplied
+ * one; otherwise resolved tracks use their Spotify URI and failed tracks
+ * (never sortable) fall back to a positional id.
+ */
+function trackId(track: TrackItem, index: number, rowIds?: string[]): string {
+  return rowIds?.[index] ?? (isResolved(track) ? track.spotifyUri : `failed-${index}`);
 }
 
 /** Shared row content: leading checkbox (select mode), grip handle (sortable mode), track card, trailing remove button. */
@@ -161,6 +179,7 @@ export function TrackList({
   selectedUris,
   onToggleSelect,
   onReorder,
+  rowIds,
 }: TrackListProps) {
   const canRemove = Boolean(onRemove) && !readOnly;
   const sortable = Boolean(onReorder) && !readOnly;
@@ -178,7 +197,10 @@ export function TrackList({
     );
   }
 
-  const ids = tracks.map((track, index) => trackId(track, index));
+  // Single source of row identity for this render: the `SortableContext`
+  // items, the drag index lookup below, each `useSortable({ id })` and every
+  // React `key` all read from this one array.
+  const ids = tracks.map((track, index) => trackId(track, index, rowIds));
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -223,7 +245,7 @@ export function TrackList({
       canSelect && 'cursor-pointer'
     );
 
-    const id = trackId(track, index);
+    const id = ids[index];
     const rowProps = {
       cardProps,
       canSelect,

@@ -24,6 +24,7 @@ export const API_ROUTES = {
   SPOTIFY_SEARCH: '/api/spotify/search',
   SPOTIFY_RESOLVE: '/api/spotify/resolve',
   SPOTIFY_PLAYLISTS: '/api/spotify/playlists',
+  SPOTIFY_PLAYLIST: '/api/spotify/playlist',
   SPOTIFY_PLAYLIST_TRACKS: '/api/spotify/playlist/tracks',
   SPOTIFY_PLAYLIST_SAVE: '/api/spotify/playlist/save',
   SPOTIFY_PLAYLIST_DELETE: '/api/spotify/playlist/delete',
@@ -76,16 +77,6 @@ export const VISIBILITY = {
 
 export type Visibility = (typeof VISIBILITY)[keyof typeof VISIBILITY];
 
-// ─── Save Panel Mode ──────────────────────────────────────────────────────────
-
-export const SAVE_MODE = {
-  CREATE: 'create',
-  UPDATE: 'update',
-  DELETE: 'delete',
-} as const;
-
-export type SaveMode = (typeof SAVE_MODE)[keyof typeof SAVE_MODE];
-
 // ─── Builder Step ─────────────────────────────────────────────────────────────
 
 export const BUILDER_STEP = {
@@ -116,6 +107,7 @@ export const QUERY_KEYS = {
   session: { all: ['session'] as const },
   playlists: {
     all: ['playlists'] as const,
+    detail: (playlistId: string) => ['playlists', playlistId, 'detail'] as const,
     tracks: (playlistId: string) => ['playlists', playlistId, 'tracks'] as const,
   },
   searchTracks: (query: string) => ['search-tracks', query] as const,

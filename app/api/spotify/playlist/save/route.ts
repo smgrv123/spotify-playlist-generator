@@ -48,10 +48,10 @@ export async function POST(request: NextRequest) {
 
     const { playlistId, playlistName, uris, mode, isPublic } = validationResult.data;
 
-    if (!uris || uris.length === 0) {
-      return fail('VALIDATION_ERROR', 'Cannot save a playlist with zero tracks', 400);
-    }
-
+    // NOTE: there is deliberately no global zero-URI guard here. An update in
+    // 'replace' mode with an empty list is the canonical "clear this playlist"
+    // call, so the rejection lives on the two branches where zero URIs really
+    // are meaningless: creating a playlist, and appending nothing to one.
     let finalSnapshotId: string | undefined = undefined;
 
     let targetPlaylistId: string;
@@ -70,7 +70,14 @@ export async function POST(request: NextRequest) {
         // The Spotify PUT /playlists/{playlist_id}/items endpoint actually overwrites everything.
         // So, we don't need to clear it first with an empty array.
         // We will perform the PUT with the first chunk, and then POST the rest.
+        // An empty list is allowed: it is how a playlist gets cleared, and it is
+        // also what a rename-only save sends.
       } else if (mode === 'append') {
+        // Appending nothing is a no-op request, not a valid save.
+        if (uris.length === 0) {
+          logger.warn('Append attempted with zero tracks', { reqId, targetPlaylistId });
+          return fail('VALIDATION_ERROR', 'Cannot append zero tracks to a playlist', 400);
+        }
         logger.info('Appending to playlist items', { reqId, targetPlaylistId, count: uris.length });
         // For append, we just POST all chunks.
       } else {
@@ -83,9 +90,19 @@ export async function POST(request: NextRequest) {
         logger.warn('Playlist rename attempted with empty name', { reqId, targetPlaylistId });
         return fail('VALIDATION_ERROR', 'Playlist name cannot be empty when updating', 400);
       }
-      await spotifyClient.put(`/playlists/${targetPlaylistId}`, { name: trimmedName });
+      // `public` is spread in conditionally: callers that omit `isPublic` are
+      // renaming or re-ordering only, and must not have visibility flipped as a
+      // side effect of the update.
+      await spotifyClient.put(`/playlists/${targetPlaylistId}`, {
+        name: trimmedName,
+        ...(isPublic !== undefined && { public: isPublic }),
+      });
     } else {
       // Create new playlist
+      if (uris.length === 0) {
+        logger.warn('New playlist creation attempted with zero tracks', { reqId });
+        return fail('VALIDATION_ERROR', 'Cannot save a playlist with zero tracks', 400);
+      }
       if (!playlistName.trim()) {
         logger.warn('New playlist creation attempted with empty name', { reqId });
         return fail(
@@ -105,6 +122,27 @@ export async function POST(request: NextRequest) {
 
     // Now, add tracks to the target playlist
     if (isUpdate && mode === 'replace') {
+      // KNOWN FAILURE MODE — a partial write truncates the playlist.
+      //
+      // Spotify has no "replace with N > 100 items" call, so a replace is a PUT
+      // of the first 100 URIs (which wipes everything already there) followed by
+      // one POST per further 100. Those requests are not a transaction and there
+      // is no rollback: if request k fails, the playlist is left holding only
+      // the first k * 100 URIs and the tail is gone from Spotify.
+      //
+      // Nothing here retries. `spotifyClient` throws on any non-2xx, including
+      // 429 — there is deliberately no backoff (out of scope), and a long
+      // replace is exactly the shape of request that earns one. The error
+      // propagates to the catch below and the client sees a failed save.
+      //
+      // The mitigation is on the client, not here: `useSavePlaylist` invalidates
+      // the playlist queries on error as well as on success, so the editor
+      // re-reads what actually landed instead of rendering the list it hoped to
+      // write. If the user still holds unsaved edits at that point, the editor
+      // keeps them, flags a conflict and blocks a second blind `replace`
+      // (`hooks/use-playlist-editor.ts`) — recovery is an explicit reload, never
+      // a silent overwrite of whatever the failed write left behind.
+      //
       // For 'replace' mode on an existing playlist, the first chunk uses PUT to overwrite
       const initialChunk = uris.slice(0, CHUNK_LIMIT);
       logger.info(`Replacing initial chunk to playlist ${targetPlaylistId}`, {

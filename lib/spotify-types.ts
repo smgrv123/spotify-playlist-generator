@@ -33,7 +33,7 @@ export interface SpotifyPlaylistItem {
   public: boolean | null;
   description: string | null;
   collaborative?: boolean;
-  owner?: { id?: string | null };
+  owner?: { id?: string | null; display_name?: string | null };
   images?: Array<{ url: string }>;
   tracks?: { total: number };
 }
@@ -41,6 +41,16 @@ export interface SpotifyPlaylistItem {
 export interface SpotifyPlaylistsResponse {
   items?: SpotifyPlaylistItem[];
   next: string | null;
+}
+
+/**
+ * A single playlist from `GET /playlists/{id}`, narrowed by a `fields`
+ * projection to the list-item fields plus the snapshot id. `snapshot_id` is
+ * optional like the rest of the projected extras: what actually comes back is
+ * decided by the caller's `fields` string, not by this type.
+ */
+export interface SpotifyPlaylistDetailResponse extends SpotifyPlaylistItem {
+  snapshot_id?: string;
 }
 
 // ─── Playlist Tracks ──────────────────────────────────────────────────────────

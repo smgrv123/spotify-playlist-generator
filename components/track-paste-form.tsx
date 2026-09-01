@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertCircle, Loader2, Pencil, Wand2 } from 'lucide-react';
+import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -13,12 +14,6 @@ import type { FailedTrack, ResolvedTrack } from '@/lib/types';
 
 interface TrackPasteFormProps {
   onTracksResolved: (tracks: (ResolvedTrack | FailedTrack)[]) => void;
-  /**
-   * Jumps the user straight to the Save step, pre-set to Update mode,
-   * without requiring any tracks to be pasted/resolved first. Entry point
-   * for users who only want to edit or delete an existing playlist.
-   */
-  onEditExisting: () => void;
   /**
    * Renders directly below the textarea and its formatting-hint paragraph,
    * above the chip actions and resolve button, still inside the prepare
@@ -47,11 +42,7 @@ Electric Feel - MGMT`;
  * chip actions + primary resolve button). Consumed by `BuilderShell` when
  * `step === BUILDER_STEP.PREPARE`.
  */
-export function TrackPasteForm({
-  onTracksResolved,
-  onEditExisting,
-  unresolvedSlot,
-}: TrackPasteFormProps) {
+export function TrackPasteForm({ onTracksResolved, unresolvedSlot }: TrackPasteFormProps) {
   const [pasteValue, setPasteValue] = useState('');
   const [parseWarnings, setParseWarnings] = useState<string[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
@@ -192,9 +183,11 @@ export function TrackPasteForm({
       </div>
 
       <div className="mt-3">
-        <Button type="button" variant="outline" onClick={onEditExisting} className="w-full">
-          <Pencil className="h-4 w-4" aria-hidden />
-          Edit an existing playlist
+        <Button asChild variant="outline" className="w-full">
+          <Link href="/playlists">
+            <Pencil className="h-4 w-4" aria-hidden />
+            Edit an existing playlist
+          </Link>
         </Button>
       </div>
     </section>
