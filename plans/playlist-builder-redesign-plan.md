@@ -293,13 +293,13 @@ The existing `window.confirm` is replaced with a shadcn `AlertDialog`. The `aler
 
 ### Acceptance criteria
 
-- [ ] Delete mode renders the styled target picker with danger-tinted selection.
-- [ ] Danger warning alert renders below the picker.
-- [ ] Primary action button is danger-styled and labeled "Delete playlist".
-- [ ] Clicking Delete opens the shadcn AlertDialog; confirming triggers the API call; cancelling closes the dialog.
-- [ ] `window.confirm` is no longer used anywhere in `SavePanel`.
-- [ ] Successful delete routes through to the success-state component (restyle in Phase 12).
-- [ ] `pnpm lint` and `pnpm typecheck` pass clean.
+- [x] Delete mode renders the styled target picker with danger-tinted selection.
+- [x] Danger warning alert renders below the picker.
+- [x] Primary action button is danger-styled and labeled "Delete playlist".
+- [x] Clicking Delete opens the shadcn AlertDialog; confirming triggers the API call; cancelling closes the dialog.
+- [x] `window.confirm` is no longer used anywhere in `SavePanel`.
+- [x] Successful delete routes through to the success-state component (restyle in Phase 12).
+- [x] `pnpm lint` and `pnpm typecheck` pass clean.
 - [ ] Manual verification: delete a test playlist with the confirm dialog.
 
 ---

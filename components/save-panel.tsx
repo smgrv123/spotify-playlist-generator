@@ -16,6 +16,17 @@ import {
 import { useEffect, useState } from 'react';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -23,8 +34,9 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TrackList } from '@/components/track-list';
+import { useDeletePlaylist } from '@/hooks/use-delete-playlist';
 import { usePlaylistTracks } from '@/hooks/use-playlist-tracks';
-import { usePlaylists } from '@/hooks/use-playlists';
+import { usePlaylists, type PlaylistSummary } from '@/hooks/use-playlists';
 import { useSavePlaylist } from '@/hooks/use-save-playlist';
 import { coverGradient } from '@/lib/cover-art';
 import {
@@ -80,6 +92,115 @@ const VISIBILITY_OPTIONS: VisibilityOption[] = [
   { value: VISIBILITY.PUBLIC, label: 'Public', icon: Globe },
 ];
 
+interface TargetPlaylistPickerProps {
+  playlists: PlaylistSummary[];
+  isLoading: boolean;
+  error: unknown;
+  targetPlaylistId: string;
+  onSelect: (id: string) => void;
+  disabled: boolean;
+  /** Selected-row affordance: accent for Update mode, danger for Delete mode. */
+  variant: 'accent' | 'danger';
+}
+
+/**
+ * Scrollable row list for picking a target playlist — album art derived from
+ * the playlist name via `coverGradient`, name, track count, checkmark on the
+ * selected row. Shared by Update mode (Phase 10, accent selection) and
+ * Delete mode (Phase 11, danger selection) so the row markup lives in one
+ * place instead of being duplicated per mode.
+ */
+function TargetPlaylistPicker({
+  playlists,
+  isLoading,
+  error,
+  targetPlaylistId,
+  onSelect,
+  disabled,
+  variant,
+}: TargetPlaylistPickerProps) {
+  const isDanger = variant === 'danger';
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-dashed border-border bg-surface-2 px-4 py-6 text-[13px] text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+        Loading your playlists…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>{getErrorMessage(error)}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (playlists.length === 0) {
+    return (
+      <p className="rounded-[var(--radius-sm)] border border-dashed border-border bg-surface-2 px-4 py-6 text-[13px] text-muted-foreground">
+        No editable playlists found on your account.
+      </p>
+    );
+  }
+
+  return (
+    <ScrollArea className="h-[220px] w-full rounded-[var(--radius-sm)]">
+      <div className="space-y-2 pr-3">
+        {playlists.map((playlist) => {
+          const isActive = playlist.id === targetPlaylistId;
+          return (
+            <button
+              key={playlist.id}
+              type="button"
+              onClick={() => onSelect(playlist.id)}
+              disabled={disabled}
+              className={cn(
+                'flex w-full items-center gap-3 rounded-[var(--radius-sm)] border p-3 text-left transition-colors',
+                isActive
+                  ? isDanger
+                    ? 'border-danger bg-danger-soft shadow-[0_0_0_3px_var(--danger-soft)]'
+                    : 'border-primary bg-accent-soft shadow-[0_0_0_3px_var(--ring)]'
+                  : 'border-border bg-surface hover:border-border-strong'
+              )}
+            >
+              <div
+                className="h-10 w-10 flex-shrink-0 rounded-[8px] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]"
+                style={{ background: coverGradient(playlist.name) }}
+                aria-hidden
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13.5px] font-semibold text-foreground">
+                  {playlist.name}
+                </p>
+                {playlist.trackCount !== null && (
+                  <p className="mt-0.5 text-[12px] text-muted-foreground">
+                    {playlist.trackCount} track{playlist.trackCount === 1 ? '' : 's'}
+                  </p>
+                )}
+              </div>
+              {isActive && (
+                <span
+                  className={cn(
+                    'grid h-5 w-5 flex-shrink-0 place-items-center rounded-full text-white',
+                    isDanger ? 'bg-danger' : 'bg-primary text-accent-contrast'
+                  )}
+                  aria-hidden
+                >
+                  <Check className="h-3 w-3" />
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </ScrollArea>
+  );
+}
+
 /**
  * Save-step card, restyled to the Vibecrafter handoff. Owns its own section
  * wrapper (eyebrow + heading), matching the pattern `TrackPasteForm` and the
@@ -114,11 +235,22 @@ export function SavePanel({
   } = useSavePlaylist();
 
   const {
+    mutate: deletePlaylist,
+    isPending: isDeleting,
+    error: deleteError,
+    data: deleteData,
+  } = useDeletePlaylist();
+
+  // Captured at confirm-time so the success message survives the target
+  // playlist disappearing from `playlists` once the cache invalidates.
+  const [deletedPlaylistName, setDeletedPlaylistName] = useState('');
+
+  const {
     playlists,
     isLoading: isLoadingPlaylists,
     error: playlistsError,
   } = usePlaylists({
-    enabled: mode === SAVE_MODE.UPDATE,
+    enabled: mode === SAVE_MODE.UPDATE || mode === SAVE_MODE.DELETE,
   });
   const {
     tracks: currentPlaylistTracks,
@@ -228,9 +360,12 @@ export function SavePanel({
     isSaving ||
     (mode === SAVE_MODE.CREATE
       ? !name.trim() || uris.length === 0
-      : mode === SAVE_MODE.UPDATE
-        ? !targetPlaylistId || !name.trim() || updateUris.length === 0
-        : true); // Delete mode ships in Phase 11.
+      : !targetPlaylistId || !name.trim() || updateUris.length === 0); // Update mode only — Delete mode uses isDeleteDisabled below.
+
+  // Delete mode: target-playlist selection shared with Update mode's picker
+  // (`playlists` is fetched above whenever mode is Update or Delete).
+  const selectedTargetPlaylist = playlists.find((playlist) => playlist.id === targetPlaylistId);
+  const isDeleteDisabled = isDeleting || !targetPlaylistId;
 
   const saveSuccessUrl = saveData
     ? `https://open.spotify.com/playlist/${saveData.playlistId}`
@@ -279,6 +414,26 @@ export function SavePanel({
             <ExternalLink className="ml-2 h-4 w-4" />
           </a>
         </Button>
+      </div>
+    );
+  }
+
+  // Plain/unstyled for now — restyled alongside saveSuccessUrl's block in
+  // Phase 12's unified success-state component.
+  if (deleteData) {
+    return (
+      <div className="flex flex-col items-center justify-center p-6 space-y-4 text-center animate-in fade-in zoom-in duration-500">
+        <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
+          <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+        </div>
+        <div className="space-y-1">
+          <h3 className="text-xl font-semibold">Playlist deleted</h3>
+          <p className="text-sm text-muted-foreground">
+            {deletedPlaylistName
+              ? `"${deletedPlaylistName}" was removed from your library.`
+              : 'The playlist was removed from your library.'}
+          </p>
+        </div>
       </div>
     );
   }
@@ -423,67 +578,15 @@ export function SavePanel({
               <Label className="block text-[12.5px] font-semibold text-foreground">
                 Target playlist
               </Label>
-              {isLoadingPlaylists ? (
-                <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-dashed border-border bg-surface-2 px-4 py-6 text-[13px] text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  Loading your playlists…
-                </div>
-              ) : playlistsError ? (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{getErrorMessage(playlistsError)}</AlertDescription>
-                </Alert>
-              ) : playlists.length === 0 ? (
-                <p className="rounded-[var(--radius-sm)] border border-dashed border-border bg-surface-2 px-4 py-6 text-[13px] text-muted-foreground">
-                  No editable playlists found on your account.
-                </p>
-              ) : (
-                <ScrollArea className="h-[220px] w-full rounded-[var(--radius-sm)]">
-                  <div className="space-y-2 pr-3">
-                    {playlists.map((playlist) => {
-                      const isActive = playlist.id === targetPlaylistId;
-                      return (
-                        <button
-                          key={playlist.id}
-                          type="button"
-                          onClick={() => setTargetPlaylistId(playlist.id)}
-                          disabled={isSaving}
-                          className={cn(
-                            'flex w-full items-center gap-3 rounded-[var(--radius-sm)] border p-3 text-left transition-colors',
-                            isActive
-                              ? 'border-primary bg-accent-soft shadow-[0_0_0_3px_var(--ring)]'
-                              : 'border-border bg-surface hover:border-border-strong'
-                          )}
-                        >
-                          <div
-                            className="h-10 w-10 flex-shrink-0 rounded-[8px] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]"
-                            style={{ background: coverGradient(playlist.name) }}
-                            aria-hidden
-                          />
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-[13.5px] font-semibold text-foreground">
-                              {playlist.name}
-                            </p>
-                            {playlist.trackCount !== null && (
-                              <p className="mt-0.5 text-[12px] text-muted-foreground">
-                                {playlist.trackCount} track{playlist.trackCount === 1 ? '' : 's'}
-                              </p>
-                            )}
-                          </div>
-                          {isActive && (
-                            <span
-                              className="grid h-5 w-5 flex-shrink-0 place-items-center rounded-full bg-primary text-accent-contrast"
-                              aria-hidden
-                            >
-                              <Check className="h-3 w-3" />
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </ScrollArea>
-              )}
+              <TargetPlaylistPicker
+                playlists={playlists}
+                isLoading={isLoadingPlaylists}
+                error={playlistsError}
+                targetPlaylistId={targetPlaylistId}
+                onSelect={setTargetPlaylistId}
+                disabled={isSaving}
+                variant="accent"
+              />
             </div>
 
             <div className="space-y-2">
@@ -565,14 +668,28 @@ export function SavePanel({
         )}
 
         {mode === SAVE_MODE.DELETE && (
-          <div className="animate-in fade-in rounded-[var(--radius-sm)] border border-dashed border-danger/40 bg-danger-soft px-5 py-10 text-center">
-            <Trash2 className="mx-auto h-6 w-6 text-danger" aria-hidden />
-            <p className="mt-3 text-[13.5px] font-semibold text-foreground">
-              Deleting playlists is coming soon
-            </p>
-            <p className="mt-1 text-[12.5px] text-muted-foreground">
-              This mode will let you permanently remove a playlist from your library.
-            </p>
+          <div className="space-y-5 animate-in fade-in">
+            <div className="space-y-2">
+              <Label className="block text-[12.5px] font-semibold text-foreground">
+                Target playlist
+              </Label>
+              <TargetPlaylistPicker
+                playlists={playlists}
+                isLoading={isLoadingPlaylists}
+                error={playlistsError}
+                targetPlaylistId={targetPlaylistId}
+                onSelect={setTargetPlaylistId}
+                disabled={isDeleting}
+                variant="danger"
+              />
+            </div>
+
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {"Deleting removes this playlist from your library. This can't be undone."}
+              </AlertDescription>
+            </Alert>
           </div>
         )}
       </div>
@@ -597,6 +714,13 @@ export function SavePanel({
         </Alert>
       )}
 
+      {deleteError && (
+        <Alert variant="destructive" className="mt-5">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{getErrorMessage(deleteError)}</AlertDescription>
+        </Alert>
+      )}
+
       <div className="my-6 h-px bg-border" aria-hidden />
 
       <div className="flex items-center justify-between gap-4">
@@ -613,22 +737,67 @@ export function SavePanel({
                 </span>
               )}
             </>
+          ) : selectedTargetPlaylist ? (
+            `"${selectedTargetPlaylist.name}" will be permanently deleted.`
           ) : (
-            'Delete mode is coming soon.'
+            'Select a playlist to delete.'
           )}
         </p>
-        <Button onClick={handleSave} disabled={isSaveDisabled} className="min-w-[150px]">
-          {isSaving ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-              Saving…
-            </>
-          ) : mode === SAVE_MODE.UPDATE ? (
-            'Update playlist'
-          ) : (
-            'Save to Spotify'
-          )}
-        </Button>
+        {mode === SAVE_MODE.DELETE ? (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                disabled={isDeleteDisabled}
+                className="min-w-[150px] bg-danger text-white hover:bg-danger/90 focus-visible:border-danger focus-visible:ring-danger/30"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                    Deleting…
+                  </>
+                ) : (
+                  'Delete playlist'
+                )}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete playlist?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {selectedTargetPlaylist
+                    ? `"${selectedTargetPlaylist.name}" will be removed from your library. This can't be undone.`
+                    : "This playlist will be removed from your library. This can't be undone."}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  className="bg-danger! text-white! hover:bg-danger/90! focus-visible:border-danger! focus-visible:ring-danger/30!"
+                  onClick={() => {
+                    setDeletedPlaylistName(selectedTargetPlaylist?.name ?? '');
+                    deletePlaylist({ playlistId: targetPlaylistId });
+                  }}
+                >
+                  Delete playlist
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : (
+          <Button onClick={handleSave} disabled={isSaveDisabled} className="min-w-[150px]">
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                Saving…
+              </>
+            ) : mode === SAVE_MODE.UPDATE ? (
+              'Update playlist'
+            ) : (
+              'Save to Spotify'
+            )}
+          </Button>
+        )}
       </div>
     </section>
   );
