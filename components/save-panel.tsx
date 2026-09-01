@@ -59,6 +59,13 @@ interface SavePanelProps {
   onVisibilityChange: (visibility: Visibility) => void;
   /** "Build another" CTA on the success state — resets the shell's Draft. */
   onBuildAnother: () => void;
+  /**
+   * Initial value for the locally-owned `mode` state, sourced from
+   * `Draft.mode`. Lets `BuilderShell` land the panel directly in Update
+   * mode (the "edit an existing playlist" entry point) without lifting
+   * `mode` itself into the shell.
+   */
+  initialMode: SaveMode;
 }
 
 interface ModeOption {
@@ -281,10 +288,11 @@ function SaveSuccessState({
  * wrapper (eyebrow + heading), matching the pattern `TrackPasteForm` and the
  * refine-step section established in earlier phases.
  *
- * `mode` is owned locally (not lifted into the shell's `Draft`) — see the
- * `Draft` docstring in `lib/types.ts`, which defers persisting save-step
- * concerns to a later phase. Create and Update modes are wired to the save
- * API; Delete renders a minimal stub body and becomes functional in Phase 11.
+ * `mode` takes its *initial* value from the shell's `Draft.mode` via the
+ * `initialMode` prop, but is still owned/mutated locally thereafter — mode
+ * changes via the radio group do not write back to `draft.mode`. Create and
+ * Update modes are wired to the save API; Delete renders a minimal stub body
+ * and becomes functional in Phase 11.
  */
 export function SavePanel({
   tracks,
@@ -293,8 +301,9 @@ export function SavePanel({
   visibility,
   onVisibilityChange,
   onBuildAnother,
+  initialMode,
 }: SavePanelProps) {
-  const [mode, setMode] = useState<SaveMode>(SAVE_MODE.CREATE);
+  const [mode, setMode] = useState<SaveMode>(initialMode);
 
   // Update mode: target-playlist selection + per-row checkbox selection sets.
   // Legitimate local/derived component state (not data fetching), so it
@@ -339,15 +348,20 @@ export function SavePanel({
   const uris = resolvedTracks.map((track) => track.spotifyUri);
 
   // Reset the current-tracks selection to "all selected" whenever the target
-  // playlist's tracks (re)load. `currentPlaylistTracks` only changes identity
-  // on a real data change (TanStack Query's structural sharing keeps the same
-  // reference across no-op background refetches), so this doesn't clobber
-  // in-progress de-selections. Adjusting state during render (React's
+  // playlist's tracks (re)load. Compared by a content-derived key (joined
+  // URIs) rather than array identity: derived arrays like
+  // `currentPlaylistTracks` are plain expressions here, not manually
+  // memoized, and React Compiler does not guarantee every intermediate
+  // value gets a stable reference across renders (verified in the compiled
+  // output — see the `uris` key below, which the compiler leaves
+  // unmemoized) — so a `!==` reference check can end up true on every
+  // render and never settle. Adjusting state during render (React's
   // documented pattern for "resetting state when a dependency changes")
   // rather than in a useEffect avoids an extra commit + render pass.
-  const [syncedCurrentTracks, setSyncedCurrentTracks] = useState<ResolvedTrack[] | null>(null);
-  if (syncedCurrentTracks !== currentPlaylistTracks) {
-    setSyncedCurrentTracks(currentPlaylistTracks);
+  const currentTracksKey = currentPlaylistTracks.map((track) => track.spotifyUri).join(',');
+  const [syncedCurrentTracksKey, setSyncedCurrentTracksKey] = useState<string | null>(null);
+  if (syncedCurrentTracksKey !== currentTracksKey) {
+    setSyncedCurrentTracksKey(currentTracksKey);
     setCurrentSelection(new Set(currentPlaylistTracks.map((track) => track.spotifyUri)));
   }
 
@@ -355,10 +369,14 @@ export function SavePanel({
   // de-selections when the resolved set changes (e.g. a track was removed
   // back in the refine step) instead of blowing the selection away. Same
   // render-time-adjustment pattern as above, gated to Update mode so
-  // switching modes doesn't touch the selection.
-  const [syncedNewUris, setSyncedNewUris] = useState<string[] | null>(null);
-  if (mode === SAVE_MODE.UPDATE && syncedNewUris !== uris) {
-    setSyncedNewUris(uris);
+  // switching modes doesn't touch the selection. Compared by key, not
+  // reference — `uris` is a fresh array from `.filter().map()` on every
+  // render (confirmed unmemoized in the compiled output), so comparing it
+  // by reference made the sync fire, and `setState`, on every render.
+  const urisKey = uris.join(',');
+  const [syncedNewUrisKey, setSyncedNewUrisKey] = useState<string | null>(null);
+  if (mode === SAVE_MODE.UPDATE && syncedNewUrisKey !== urisKey) {
+    setSyncedNewUrisKey(urisKey);
     setNewSelection((prev) => {
       if (uris.length === 0) return new Set();
       if (prev.size === 0) return new Set(uris);
@@ -624,10 +642,13 @@ export function SavePanel({
                 id="update-playlist-name"
                 value={name}
                 onChange={(event) => onNameChange(event.target.value)}
-                placeholder="Pick a playlist below to load its name"
+                placeholder="Rename this playlist (optional)"
                 disabled={isSaving || !targetPlaylistId}
                 className="block h-auto w-full rounded-[var(--radius-sm)] border bg-surface-inset px-4 py-3 text-[14.5px] text-foreground placeholder:text-text-faint transition focus-visible:border-primary focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring dark:bg-surface-inset"
               />
+              <p className="text-[12.5px] leading-relaxed text-text-faint">
+                Update the name if you want to rename this playlist.
+              </p>
             </div>
 
             <div className="space-y-2">

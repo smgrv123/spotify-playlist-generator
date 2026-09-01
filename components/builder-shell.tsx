@@ -10,7 +10,7 @@ import { SavePanel } from '@/components/save-panel';
 import { Stepper } from '@/components/stepper';
 import { TrackList } from '@/components/track-list';
 import { TrackPasteForm } from '@/components/track-paste-form';
-import { BUILDER_STEP, type Visibility } from '@/lib/constants';
+import { BUILDER_STEP, SAVE_MODE, type Visibility } from '@/lib/constants';
 import * as draftStore from '@/lib/draft-store';
 import { isFailed, isResolved } from '@/lib/type-guards';
 import type { BuilderStep, FailedTrack, ResolvedTrack } from '@/lib/types';
@@ -63,6 +63,21 @@ export function BuilderShell() {
         maxReached: prev.maxReached >= BUILDER_STEP.REFINE ? prev.maxReached : BUILDER_STEP.REFINE,
       };
     });
+  };
+
+  /**
+   * Entry point for users who only want to edit/delete an existing playlist
+   * and have no tracks to paste yet — jumps straight to Save pre-set to
+   * Update mode, unlocking it via `maxReached` the same way `handleTracksResolved`
+   * unlocks Refine.
+   */
+  const handleEditExisting = () => {
+    draftStore.update((prev) => ({
+      ...prev,
+      step: BUILDER_STEP.SAVE,
+      maxReached: prev.maxReached >= BUILDER_STEP.SAVE ? prev.maxReached : BUILDER_STEP.SAVE,
+      mode: SAVE_MODE.UPDATE,
+    }));
   };
 
   const handleAddTrack = (track: ResolvedTrack) => {
@@ -122,6 +137,7 @@ export function BuilderShell() {
           {draft.step === BUILDER_STEP.PREPARE && (
             <TrackPasteForm
               onTracksResolved={handleTracksResolved}
+              onEditExisting={handleEditExisting}
               unresolvedSlot={
                 failedTracks.length > 0 ? (
                   <section
@@ -210,6 +226,7 @@ export function BuilderShell() {
               visibility={draft.visibility}
               onVisibilityChange={handleVisibilityChange}
               onBuildAnother={handleBuildAnother}
+              initialMode={draft.mode}
             />
           )}
         </div>
