@@ -219,13 +219,13 @@ The "Unresolved" section is fully styled: section label + count badge, danger-so
 
 ### Acceptance criteria
 
-- [ ] Resolved track row matches the handoff (art, title, artist + album, duration, remove on hover).
-- [ ] Hovering a track row reveals the remove button; clicking it removes the track from the draft.
-- [ ] Unresolved section renders with section label + count badge.
-- [ ] Unresolved rows render with danger-soft background, alert icon, red title, "No Spotify match found" subtext, "unresolved" badge.
-- [ ] Removing an unresolved track removes it from the draft.
-- [ ] Track row works in both themes.
-- [ ] `pnpm lint` and `pnpm typecheck` pass clean.
+- [x] Resolved track row matches the handoff (art, title, artist + album, duration, remove on hover).
+- [x] Hovering a track row reveals the remove button; clicking it removes the track from the draft.
+- [x] Unresolved section renders with section label + count badge.
+- [x] Unresolved rows render with danger-soft background, alert icon, red title, "No Spotify match found" subtext, "unresolved" badge.
+- [x] Removing an unresolved track removes it from the draft.
+- [x] Track row works in both themes.
+- [x] `pnpm lint` and `pnpm typecheck` pass clean.
 - [ ] Manual verification: walk through a partial-fail draft, remove tracks from both sections.
 
 ---

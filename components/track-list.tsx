@@ -3,6 +3,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { TrackCard } from '@/components/track-card';
 import type { FailedTrack, ResolvedTrack } from '@/lib/types';
 import { isResolved } from '@/lib/type-guards';
+import { cn } from '@/lib/utils';
 import { Trash2 } from 'lucide-react';
 
 type TrackItem = ResolvedTrack | FailedTrack;
@@ -26,7 +27,7 @@ export function TrackList({ tracks, onRemove, readOnly = false, emptyMessage }: 
 
   return (
     <ScrollArea className="h-[400px] w-full rounded-md border p-4">
-      <div className="space-y-3">
+      <div className="space-y-[7px]">
         {tracks.map((track, index) => {
           const resolved = isResolved(track);
           const cardProps = resolved
@@ -36,6 +37,7 @@ export function TrackList({ tracks, onRemove, readOnly = false, emptyMessage }: 
                 albumContext: track.displayData.albumContext,
                 imageUrl: track.displayData.imageUrl,
                 isFailed: false,
+                durationMs: track.durationMs,
               }
             : {
                 title: track.query.title,
@@ -43,33 +45,32 @@ export function TrackList({ tracks, onRemove, readOnly = false, emptyMessage }: 
                 albumContext: undefined,
                 imageUrl: undefined,
                 isFailed: true,
+                durationMs: undefined,
               };
 
           return (
             <div
               key={resolved ? track.spotifyUri : `failed-${index}`}
-              className={`flex items-center justify-between p-3 border rounded-lg group transition-colors ${
+              className={cn(
+                'group flex items-center gap-[13px] rounded-[var(--radius-sm)] border py-[9px] px-[11px] transition-colors',
                 resolved
-                  ? 'bg-card hover:bg-muted/50'
-                  : 'bg-red-50/50 dark:bg-red-950/10 border-red-100 dark:border-red-900/50'
-              }`}
+                  ? 'border-border bg-surface hover:border-border-strong hover:bg-surface-2'
+                  : 'border-danger/30 bg-danger-soft'
+              )}
             >
-              <div className="flex-1 min-w-0 pr-4">
+              {/* Grip-handle slot intentionally left empty — Phase 13 wires drag-to-reorder. */}
+              <div className="min-w-0 flex-1">
                 <TrackCard {...cardProps} />
               </div>
               {canRemove && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={`flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ${
-                    resolved
-                      ? 'text-muted-foreground hover:text-destructive'
-                      : 'text-red-500 hover:text-red-600 hover:bg-red-100 dark:hover:bg-red-900/40'
-                  }`}
+                  className="h-[30px] w-[30px] flex-shrink-0 rounded-[8px] text-text-faint opacity-0 transition-all duration-150 group-hover:opacity-100 hover:bg-danger-soft hover:text-danger"
                   onClick={() => onRemove?.(index)}
                   title="Remove track"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden />
                 </Button>
               )}
             </div>

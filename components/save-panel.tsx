@@ -18,9 +18,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { API_ROUTES, SAVE_MODE, VISIBILITY, type SaveMode, type Visibility } from '@/lib/constants';
-import { getErrorMessage, isApiErrorShape, isFailed, isResolved } from '@/lib/type-guards';
-import type { FailedTrack, ResolvedTrack, SaveRequest, SaveResponse } from '@/lib/types';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useSavePlaylist } from '@/hooks/use-save-playlist';
+import { SAVE_MODE, VISIBILITY, type SaveMode, type Visibility } from '@/lib/constants';
+import { getErrorMessage, isFailed, isResolved } from '@/lib/type-guards';
+import type { FailedTrack, ResolvedTrack } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface SavePanelProps {
@@ -84,9 +86,13 @@ export function SavePanel({
   onVisibilityChange,
 }: SavePanelProps) {
   const [mode, setMode] = useState<SaveMode>(SAVE_MODE.CREATE);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccessUrl, setSaveSuccessUrl] = useState<string | null>(null);
+
+  const {
+    mutate: savePlaylist,
+    isPending: isSaving,
+    error: saveError,
+    data: saveData,
+  } = useSavePlaylist();
 
   const resolvedTracks = tracks.filter(isResolved);
   const failedTracks = tracks.filter(isFailed);
@@ -94,36 +100,18 @@ export function SavePanel({
 
   const isSaveDisabled = mode !== SAVE_MODE.CREATE || isSaving || !name.trim() || uris.length === 0;
 
-  const handleSave = async () => {
+  const saveSuccessUrl = saveData
+    ? `https://open.spotify.com/playlist/${saveData.playlistId}`
+    : null;
+
+  const handleSave = () => {
     if (isSaveDisabled) return;
 
-    setIsSaving(true);
-    setSaveError(null);
-
-    const payload: SaveRequest = {
+    savePlaylist({
       playlistName: name.trim(),
       uris,
       isPublic: visibility === VISIBILITY.PUBLIC,
-    };
-
-    try {
-      const res = await fetch(API_ROUTES.SPOTIFY_PLAYLIST_SAVE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data: unknown = await res.json();
-
-      if (!res.ok) {
-        throw new Error(isApiErrorShape(data) ? data.message : 'Failed to save to Spotify');
-      }
-
-      setSaveSuccessUrl(`https://open.spotify.com/playlist/${(data as SaveResponse).playlistId}`);
-    } catch (err) {
-      setSaveError(getErrorMessage(err));
-    } finally {
-      setIsSaving(false);
-    }
+    });
   };
 
   if (saveSuccessUrl) {
@@ -166,8 +154,9 @@ export function SavePanel({
         {resolvedTracks.length === 1 ? '' : 's'}.
       </p>
 
-      <div
-        role="radiogroup"
+      <RadioGroup
+        value={mode}
+        onValueChange={(value) => setMode(value as SaveMode)}
         aria-label="Save mode"
         className="mt-6 grid grid-cols-1 gap-2.5 sm:grid-cols-3"
       >
@@ -175,15 +164,13 @@ export function SavePanel({
           const isActive = mode === option.value;
           const isDanger = option.value === SAVE_MODE.DELETE;
           const Icon = option.icon;
+          const inputId = `save-mode-${option.value}`;
           return (
-            <button
+            <Label
               key={option.value}
-              type="button"
-              role="radio"
-              aria-checked={isActive}
-              onClick={() => setMode(option.value)}
+              htmlFor={inputId}
               className={cn(
-                'flex flex-col items-start rounded-[var(--radius-sm)] border p-4 text-left transition-colors',
+                'flex cursor-pointer flex-col items-start gap-0 rounded-[var(--radius-sm)] border p-4 text-left font-normal transition-colors',
                 isActive
                   ? isDanger
                     ? 'border-danger bg-danger-soft shadow-[0_0_0_3px_var(--danger-soft)]'
@@ -191,6 +178,7 @@ export function SavePanel({
                   : 'border-border bg-surface-2 hover:border-border-strong'
               )}
             >
+              <RadioGroupItem value={option.value} id={inputId} className="peer sr-only" />
               <span
                 className={cn(
                   'mb-2.5 grid h-[34px] w-[34px] place-items-center rounded-[9px] border text-muted-foreground',
@@ -207,10 +195,10 @@ export function SavePanel({
               <span className="mt-[3px] text-[12px] leading-relaxed text-muted-foreground">
                 {option.description}
               </span>
-            </button>
+            </Label>
           );
         })}
-      </div>
+      </RadioGroup>
 
       <div className="mt-6">
         {mode === SAVE_MODE.CREATE && (
@@ -236,35 +224,36 @@ export function SavePanel({
               <Label className="block text-[12.5px] font-semibold text-foreground">
                 Visibility
               </Label>
-              <div
-                role="radiogroup"
+              <RadioGroup
+                value={visibility}
+                onValueChange={(value) => onVisibilityChange(value as Visibility)}
+                disabled={isSaving}
                 aria-label="Visibility"
                 className="inline-flex w-full gap-[3px] rounded-[var(--radius-sm)] border bg-surface-2 p-1"
               >
                 {VISIBILITY_OPTIONS.map((option) => {
                   const isActive = visibility === option.value;
                   const Icon = option.icon;
+                  const inputId = `save-visibility-${option.value}`;
                   return (
-                    <button
+                    <Label
                       key={option.value}
-                      type="button"
-                      role="radio"
-                      aria-checked={isActive}
-                      disabled={isSaving}
-                      onClick={() => onVisibilityChange(option.value)}
+                      htmlFor={inputId}
                       className={cn(
-                        'flex flex-1 items-center justify-center gap-1.5 rounded-[calc(var(--radius-sm)-4px)] px-3.5 py-2.5 text-[13px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                        'flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-[calc(var(--radius-sm)-4px)] px-3.5 py-2.5 text-[13px] font-semibold transition-colors',
                         isActive
                           ? 'bg-surface text-foreground shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground'
+                          : 'text-muted-foreground hover:text-foreground',
+                        isSaving && 'cursor-not-allowed opacity-50'
                       )}
                     >
+                      <RadioGroupItem value={option.value} id={inputId} className="peer sr-only" />
                       <Icon className="h-[15px] w-[15px]" aria-hidden />
                       {option.label}
-                    </button>
+                    </Label>
                   );
                 })}
-              </div>
+              </RadioGroup>
             </div>
           </div>
         )}
@@ -310,7 +299,7 @@ export function SavePanel({
       {saveError && (
         <Alert variant="destructive" className="mt-5">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{saveError}</AlertDescription>
+          <AlertDescription>{getErrorMessage(saveError)}</AlertDescription>
         </Alert>
       )}
 
