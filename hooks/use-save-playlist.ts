@@ -1,33 +1,18 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiFetch } from '@/lib/api-client';
 import { API_ROUTES, QUERY_KEYS } from '@/lib/constants';
-import { isApiErrorShape } from '@/lib/type-guards';
 import { SaveRequest, SaveResponse } from '@/lib/types';
 
 export function useSavePlaylist() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (payload: SaveRequest): Promise<SaveResponse> => {
-      const saveRes = await fetch(API_ROUTES.SPOTIFY_PLAYLIST_SAVE, {
+    mutationFn: (payload: SaveRequest): Promise<SaveResponse> =>
+      apiFetch<SaveResponse>(API_ROUTES.SPOTIFY_PLAYLIST_SAVE, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      });
-
-      const saveData = await saveRes.json();
-
-      if (!saveRes.ok) {
-        if (isApiErrorShape(saveData)) {
-          throw Object.assign(new Error(saveData.message), {
-            code: saveData.code,
-            details: saveData.details,
-          });
-        }
-        throw new Error('Failed to save to Spotify');
-      }
-
-      return saveData;
-    },
+      }),
     onSuccess: () => {
       // A save rewrites the playlist's name, visibility and full item list, so
       // every cached read of it is now stale. `QUERY_KEYS.playlists.detail`

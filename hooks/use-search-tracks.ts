@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
+import { apiFetch } from '@/lib/api-client';
 import { API_ROUTES, QUERY_KEYS } from '@/lib/constants';
 
 const SEARCH_DEBOUNCE_MS = 400;
@@ -45,18 +46,18 @@ export function useSearchTracks(query: string) {
   const { data, isFetching } = useQuery<SearchResultTrack[]>({
     queryKey: QUERY_KEYS.searchTracks(debouncedQuery),
     queryFn: async () => {
-      const res = await fetch(
+      const data = await apiFetch<{ tracks?: SearchResultTrack[] }>(
         `${API_ROUTES.SPOTIFY_SEARCH}?q=${encodeURIComponent(debouncedQuery)}`
       );
-      if (!res.ok) {
-        throw new Error('Failed to search Spotify tracks');
-      }
-      const data = await res.json();
       return data.tracks ?? [];
     },
     enabled,
     staleTime: 30 * 1000,
     retry: 1,
+    // Search has no inline error UI of its own (the dropdown just shows no
+    // results), so a failure is otherwise silent — this is the "cross-cutting,
+    // not tied to one visible control" case the toast policy exists for.
+    meta: { toastOnError: true },
   });
 
   return {

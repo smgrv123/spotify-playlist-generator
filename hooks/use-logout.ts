@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiFetch } from '@/lib/api-client';
 import { API_ROUTES, QUERY_KEYS } from '@/lib/constants';
 
 export function useLogout() {
@@ -6,10 +7,7 @@ export function useLogout() {
 
   return useMutation({
     mutationFn: async (): Promise<void> => {
-      const res = await fetch(API_ROUTES.AUTH_LOGOUT, { method: 'POST' });
-      if (!res.ok) {
-        throw new Error('Failed to logout');
-      }
+      await apiFetch(API_ROUTES.AUTH_LOGOUT, { method: 'POST' });
     },
     onSuccess: () => {
       // Optimistically mark session as logged out so the UI re-renders immediately

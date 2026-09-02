@@ -35,13 +35,25 @@ async function ensureValidToken(): Promise<string> {
       code: 'NO_SESSION',
       message: 'No active session or refresh token available. User must log in.',
     };
-    throw err;
+    // Attach status so normalizeError surfaces this as a 401 rather than defaulting to 500,
+    // letting the client's UnauthorizedError path redirect to /login.
+    throw Object.assign(new Error(err.message), {
+      code: err.code,
+      status: 401,
+    });
   }
 
   const refreshResult = await refreshAccessToken(tokens.refreshToken);
   if (!refreshResult.success) {
     await clearSpotifyTokens(); // Refresh failed, clear poisoned session
-    throw refreshResult.error;
+    const err = refreshResult.error;
+    // Same as above: attach status: 401 so this reaches the client as Unauthorized,
+    // not a generic 500, since the refresh token itself is invalid/expired.
+    throw Object.assign(new Error(err.message), {
+      code: err.code,
+      details: err.details,
+      status: 401,
+    });
   }
 
   await setSpotifyTokens(

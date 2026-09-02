@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 
+import { apiFetch } from '@/lib/api-client';
 import { API_ROUTES, QUERY_KEYS } from '@/lib/constants';
 
 /** Shape of one row in `GET /api/spotify/playlists`'s `playlists` array. */
@@ -28,11 +29,7 @@ export function usePlaylists({ enabled = true }: UsePlaylistsOptions = {}) {
   const { data, isLoading, error } = useQuery<PlaylistSummary[]>({
     queryKey: QUERY_KEYS.playlists.all,
     queryFn: async () => {
-      const res = await fetch(API_ROUTES.SPOTIFY_PLAYLISTS);
-      if (!res.ok) {
-        throw new Error('Failed to load playlists');
-      }
-      const data = await res.json();
+      const data = await apiFetch<{ playlists?: PlaylistSummary[] }>(API_ROUTES.SPOTIFY_PLAYLISTS);
       return data.playlists ?? [];
     },
     enabled,
