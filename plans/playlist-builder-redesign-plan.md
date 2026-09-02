@@ -342,14 +342,14 @@ Reorder mutates the shell's `tracks` state array. Phase 5's `saveDraft` debounce
 
 ### Acceptance criteria
 
-- [ ] Hovering a resolved-track row reveals the grip handle.
-- [ ] Dragging a row by the grip handle reorders it; the cursor and ghost row render with dnd-kit defaults.
-- [ ] Releasing on a new position persists the new order in the shell's `tracks` array.
-- [ ] Reordering does not affect failed tracks (unresolved section is not sortable).
-- [ ] Navigating away to another step and back preserves the new order.
-- [ ] Refreshing the tab restores the new order from sessionStorage.
-- [ ] Keyboard reorder: focus a row's grip handle with Tab, press Space to pick up, arrow keys to move, Space to drop.
-- [ ] `pnpm lint` and `pnpm typecheck` pass clean.
+- [x] Hovering a resolved-track row reveals the grip handle.
+- [x] Dragging a row by the grip handle reorders it; the cursor and ghost row render with dnd-kit defaults.
+- [x] Releasing on a new position persists the new order in the shell's `tracks` array.
+- [x] Reordering does not affect failed tracks (unresolved section is not sortable).
+- [x] Navigating away to another step and back preserves the new order.
+- [x] Refreshing the tab restores the new order from sessionStorage.
+- [x] Keyboard reorder: focus a row's grip handle with Tab, press Space to pick up, arrow keys to move, Space to drop.
+- [x] `pnpm lint` and `pnpm typecheck` pass clean.
 - [ ] Manual verification: reorder with mouse, reorder with keyboard, refresh after reorder.
 
 ---
