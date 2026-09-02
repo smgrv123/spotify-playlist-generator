@@ -372,16 +372,25 @@ Refactor existing fetch calls (`useResolveTracks`, `AddTrackSearch`, `SavePanel`
 
 ### Acceptance criteria
 
-- [ ] `sonner` is installed and `<Toaster />` is mounted in `Providers`.
-- [ ] `lib/api-client.ts` exposes `apiFetch` with the documented error semantics.
-- [ ] Every existing fetch call routes through `apiFetch` (no raw `fetch` calls remain in components or hooks that hit our `/api/*` routes).
-- [ ] Forcing a 401 (e.g. by clearing the auth cookie in DevTools and triggering any API call) redirects to `/login` and shows the "Session expired" toast.
-- [ ] Returning to `/` after re-auth restores the draft from sessionStorage.
-- [ ] Cross-cutting failures (e.g. network down on search) surface a sonner toast.
-- [ ] Step-local failures continue to render inline (no double-notification via both toast and inline alert).
-- [ ] `lib/api-client.ts` test suite covers: 2xx returns parsed JSON, 401 throws typed `UnauthorizedError`, 5xx throws a generic error containing the server message, network failure throws a recognizable error, JSON-parse failure on 2xx throws a typed error.
-- [ ] `pnpm lint`, `pnpm typecheck`, and `pnpm test` pass clean.
+- [x] `sonner` is installed and `<Toaster />` is mounted in `Providers`.
+- [x] `lib/api-client.ts` exposes `apiFetch` with the documented error semantics (`UnauthorizedError`, `ApiRequestError`, `ApiParseError`, `NetworkError`).
+- [x] Every existing fetch call routes through `apiFetch` — grep confirms zero raw `fetch(` calls remain in `hooks/` or `components/` against our own `/api/*` routes.
+- [x] Forcing a 401 redirects to `/login` and shows the "Session expired" toast — code-verified, with a real bug fixed along the way (see note below).
+- [x] Returning to `/` after re-auth restores the draft from sessionStorage — traced: `router.push('/login')` is client-side, so the in-memory `draft-store` and its sessionStorage persistence both survive the round trip.
+- [x] Cross-cutting failures (e.g. network down on search) surface a sonner toast — currently `useSearchTracks`, the one hook with no inline error UI of its own.
+- [x] Step-local failures continue to render inline (no double-notification via both toast and inline alert) — audited against every consumer, not just hook names.
+- [x] `lib/api-client.ts` test suite covers all five documented cases.
+- [x] `pnpm lint`, `pnpm typecheck`, and `pnpm test` (68/68) pass clean; `pnpm build` compiles with no route regressions.
 - [ ] Manual verification: clear auth cookie mid-flow, confirm redirect + restore; disconnect network and confirm toast.
+
+**Bug found and fixed by code review before this landed.** The 401 criterion's own repro — clearing
+the auth cookie in DevTools — didn't originally work. `lib/spotify-client.ts`'s `NO_SESSION` error and
+its refresh-failure error both carried no `status` field, so `normalizeError` defaulted them to HTTP
+500, and `apiFetch`'s `response.status === 401` check never tripped. Both now carry `status: 401`,
+using the `Object.assign(new Error(...), {status})` pattern already established elsewhere in the same
+file. The access-token-merely-expired/refresh-succeeds happy path is unchanged. The redirect/toast
+machinery itself was correct from the start — it simply never received the error type its own
+acceptance criterion's repro was supposed to produce.
 
 ---
 
