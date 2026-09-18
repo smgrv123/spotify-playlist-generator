@@ -69,10 +69,7 @@ export function PlaylistTrackEditor({
           that the diff below cannot show. Same amber treatment the builder
           uses for "some of your tracks won't make it". */}
       {skippedCount > 0 && !isLoading && (
-        <Alert
-          variant="default"
-          className="mt-5 border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/10 dark:text-amber-400"
-        >
+        <Alert variant="warning" className="mt-5">
           <Info className="h-4 w-4" />
           <AlertDescription className="text-current">
             {skippedCount} item{skippedCount === 1 ? '' : 's'} in this playlist — podcast episodes

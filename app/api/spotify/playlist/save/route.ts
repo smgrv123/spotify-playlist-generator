@@ -15,7 +15,6 @@ interface AddItemsResponse {
 
 export async function POST(request: NextRequest) {
   const reqId = crypto.randomUUID();
-  logger.info('Save playlist request started', { reqId });
 
   try {
     const rawBodyText = await request.text();
@@ -59,14 +58,9 @@ export async function POST(request: NextRequest) {
     const CHUNK_LIMIT = MAX_URIS_PER_REQUEST; // Use the constant for clarity
 
     if (isUpdate) {
-      if (!playlistId) {
-        logger.warn('Save playlist update attempted without ID', { reqId });
-        return fail('VALIDATION_ERROR', 'Updating a playlist requires a playlistId', 400);
-      }
       targetPlaylistId = playlistId;
 
       if (mode === 'replace') {
-        logger.info('Replacing playlist items', { reqId, targetPlaylistId, count: uris.length });
         // The Spotify PUT /playlists/{playlist_id}/items endpoint actually overwrites everything.
         // So, we don't need to clear it first with an empty array.
         // We will perform the PUT with the first chunk, and then POST the rest.
@@ -78,7 +72,6 @@ export async function POST(request: NextRequest) {
           logger.warn('Append attempted with zero tracks', { reqId, targetPlaylistId });
           return fail('VALIDATION_ERROR', 'Cannot append zero tracks to a playlist', 400);
         }
-        logger.info('Appending to playlist items', { reqId, targetPlaylistId, count: uris.length });
         // For append, we just POST all chunks.
       } else {
         logger.warn('Invalid update mode specified', { reqId, mode });
@@ -111,7 +104,6 @@ export async function POST(request: NextRequest) {
           400
         );
       }
-      logger.info('Creating new playlist', { reqId, playlistName });
       const created = await spotifyClient.post<{ id: string }>(`/me/playlists`, {
         name: playlistName.trim(),
         public: isPublic ?? false,

@@ -4,7 +4,6 @@ import { AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-import { PlaylistConflictAlert } from '@/components/playlist/playlist-conflict-alert';
 import { PlaylistDetailHeader } from '@/components/playlist/playlist-detail-header';
 import { PlaylistTrackEditor } from '@/components/playlist/playlist-track-editor';
 import { UnsavedChangesBar } from '@/components/playlist/unsaved-changes-bar';
@@ -79,14 +78,6 @@ export function PlaylistDetail({ playlistId }: { playlistId: string }) {
         <ArrowLeft className="h-4 w-4" aria-hidden />
         All playlists
       </Link>
-
-      {/* Rendered above everything, and independently of the unsaved-changes
-          bar: a conflict outlives the pending diff that raised it (the user can
-          undo their edits by hand), and while it stands the page is showing
-          data the editor already knows is out of date. */}
-      {editor.hasConflict && (
-        <PlaylistConflictAlert onReload={editor.discard} isSaving={editor.isSaving} />
-      )}
 
       <PlaylistDetailHeader
         detail={detail}

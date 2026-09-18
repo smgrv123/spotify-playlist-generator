@@ -10,9 +10,6 @@
 // ─── App Metadata ────────────────────────────────────────────────────────────
 
 export const APP_NAME = 'Vibecrafter';
-export const APP_DESCRIPTION =
-  'Create and manage Spotify playlists from your own track lists. Paste, resolve, and save tracks directly to your Spotify account.';
-export const APP_TAGLINE = 'Create and manage Spotify playlists from your own track lists.';
 
 // ─── API Route Paths ──────────────────────────────────────────────────────────
 // Used by client-side hooks so URL changes require exactly one edit.
@@ -20,7 +17,6 @@ export const APP_TAGLINE = 'Create and manage Spotify playlists from your own tr
 export const API_ROUTES = {
   AUTH_SESSION: '/api/auth/session',
   AUTH_LOGIN: '/api/auth/login',
-  AUTH_LOGOUT: '/api/auth/logout',
   SPOTIFY_SEARCH: '/api/spotify/search',
   SPOTIFY_RESOLVE: '/api/spotify/resolve',
   SPOTIFY_PLAYLISTS: '/api/spotify/playlists',
@@ -30,16 +26,12 @@ export const API_ROUTES = {
   SPOTIFY_PLAYLIST_DELETE: '/api/spotify/playlist/delete',
 } as const;
 
-export type ApiRoute = (typeof API_ROUTES)[keyof typeof API_ROUTES];
-
 // ─── Track Status ─────────────────────────────────────────────────────────────
 
 export const TRACK_STATUS = {
   RESOLVED: 'resolved',
   FAILED: 'failed',
 } as const;
-
-export type TrackStatus = (typeof TRACK_STATUS)[keyof typeof TRACK_STATUS];
 
 // ─── Failed Track Reason ──────────────────────────────────────────────────────
 
@@ -87,6 +79,20 @@ export const BUILDER_STEP = {
 
 export type BuilderStep = (typeof BUILDER_STEP)[keyof typeof BUILDER_STEP];
 
+// ─── Builder Step Display Metadata ───────────────────────────────────────────
+// Single source of truth for step eyebrow/title/label strings, keyed by
+// BUILDER_STEP so the stepper header and each step card's own heading never
+// drift out of sync.
+
+export const BUILDER_STEP_META: Record<
+  BuilderStep,
+  { eyebrow: string; title: string; stepLabel: string }
+> = {
+  [BUILDER_STEP.PREPARE]: { eyebrow: 'Import', title: 'Prepare', stepLabel: 'Step 01 — Import' },
+  [BUILDER_STEP.REFINE]: { eyebrow: 'Curate', title: 'Refine', stepLabel: 'Step 02 — Curate' },
+  [BUILDER_STEP.SAVE]: { eyebrow: 'Publish', title: 'Save', stepLabel: 'Step 03 — Publish' },
+} as const;
+
 // ─── API Error Codes ──────────────────────────────────────────────────────────
 
 export const API_ERROR_CODE = {
@@ -97,8 +103,6 @@ export const API_ERROR_CODE = {
   RATE_LIMITED: 'RATE_LIMITED',
   UNAUTHORIZED: 'UNAUTHORIZED',
 } as const;
-
-export type ApiErrorCode = (typeof API_ERROR_CODE)[keyof typeof API_ERROR_CODE];
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
 // Centralized so key shapes are never duplicated across hooks.

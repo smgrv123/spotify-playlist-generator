@@ -10,24 +10,28 @@ interface SpotifyTokenResponse {
   refresh_token?: string;
 }
 
-export async function exchangeAuthCodeForToken(code: string): Promise<SpotifyTokenResponse> {
+async function postToken(params: Record<string, string>): Promise<Response> {
   const tokenUrl = 'https://accounts.spotify.com/api/token';
 
   const basicAuth = Buffer.from(`${env.SPOTIFY_CLIENT_ID}:${env.SPOTIFY_CLIENT_SECRET}`).toString(
     'base64'
   );
 
-  const response = await fetch(tokenUrl, {
+  return fetch(tokenUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
       Authorization: `Basic ${basicAuth}`,
     },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: env.SPOTIFY_REDIRECT_URI,
-    }),
+    body: new URLSearchParams(params),
+  });
+}
+
+export async function exchangeAuthCodeForToken(code: string): Promise<SpotifyTokenResponse> {
+  const response = await postToken({
+    grant_type: 'authorization_code',
+    code,
+    redirect_uri: env.SPOTIFY_REDIRECT_URI,
   });
 
   if (!response.ok) {
@@ -63,22 +67,9 @@ export async function refreshAccessToken(
   | { success: true; tokens: SpotifyTokenResponse }
   | { success: false; error: import('./types').ApiError }
 > {
-  const tokenUrl = 'https://accounts.spotify.com/api/token';
-
-  const basicAuth = Buffer.from(`${env.SPOTIFY_CLIENT_ID}:${env.SPOTIFY_CLIENT_SECRET}`).toString(
-    'base64'
-  );
-
-  const response = await fetch(tokenUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Authorization: `Basic ${basicAuth}`,
-    },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-    }),
+  const response = await postToken({
+    grant_type: 'refresh_token',
+    refresh_token: refreshToken,
   });
 
   if (!response.ok) {

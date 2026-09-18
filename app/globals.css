@@ -19,22 +19,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-body);
   --font-display: var(--font-display);
   --font-mono: var(--font-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -58,20 +44,16 @@
   --color-accent-strong: var(--accent-strong);
   --color-accent-soft: var(--accent-soft);
   --color-accent-contrast: var(--accent-contrast);
-  --color-accent-2: var(--accent-2);
   --color-border-strong: var(--border-strong);
   --color-text-faint: var(--text-faint);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
   --radius-sm: var(--radius-sm-token);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius-lg-token);
   --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
-  --color-spotify: var(--spotify);
-  --color-spotify-hover: var(--spotify-hover);
   --shadow-card: var(--shadow-card);
   --shadow-pop: var(--shadow-pop);
   --shadow-glow: var(--glow);
@@ -91,7 +73,6 @@
   /* Identity tokens */
   --display-spacing: -0.022em;
   --display-weight: 800;
-  --display-transform: none;
   --label-spacing: 0.01em;
   --brand-mark-radius: 11px;
   --step-num-radius: 9px;
@@ -117,9 +98,10 @@
   --accent-strong: oklch(0.61 0.19 150);
   --accent-soft: oklch(0.95 0.05 150);
   --accent-contrast: oklch(0.99 0.02 150);
-  --accent-2: oklch(0.68 0.18 150);
   --danger: oklch(0.58 0.2 25);
   --danger-soft: oklch(0.96 0.03 25);
+  --warning: oklch(0.473 0.137 46.201);
+  --warning-soft: oklch(0.987 0.022 95.277);
   --shadow-card: 0 1px 2px oklch(0 0 0 / 0.04), 0 8px 24px -14px oklch(0 0 0 / 0.14);
   --shadow-pop: 0 4px 8px oklch(0 0 0 / 0.06), 0 24px 48px -20px oklch(0 0 0 / 0.22);
   --ring-color: color-mix(in oklch, var(--accent-base) 40%, transparent);
@@ -144,24 +126,6 @@
   --border: var(--border-color);
   --input: var(--border-color);
   --ring: var(--ring-color);
-  --chart-1: var(--accent-base);
-  --chart-2: var(--accent-2);
-  --chart-3: var(--accent-strong);
-  --chart-4: var(--text-muted);
-  --chart-5: var(--danger);
-  --sidebar: var(--surface);
-  --sidebar-foreground: var(--text);
-  --sidebar-primary: var(--accent-base);
-  --sidebar-primary-foreground: var(--accent-contrast);
-  --sidebar-accent: var(--surface-2);
-  --sidebar-accent-foreground: var(--text);
-  --sidebar-border: var(--border-color);
-  --sidebar-ring: var(--ring-color);
-
-  /* Spotify brand (used by existing components) */
-  --spotify: oklch(0.696 0.219 152.5);
-  --spotify-hover: oklch(0.727 0.219 152.5);
-
   /* Layout constant — top-bar height, used to offset the sticky preview rail */
   --topbar-offset: 89px;
 }
@@ -171,13 +135,11 @@
    ============================================================ */
 .dark {
   /* Font stack — Vinyl uses Space Grotesk for the display family */
-  --font-body: var(--font-hanken-grotesk), 'Hanken Grotesk', system-ui, sans-serif;
   --font-display: var(--font-space-grotesk), 'Space Grotesk', system-ui, sans-serif;
 
   /* Identity tokens */
   --display-spacing: -0.018em;
   --display-weight: 700;
-  --display-transform: none;
   --label-spacing: 0.08em;
   --brand-mark-radius: 50%;
   --step-num-radius: 50%;
@@ -203,50 +165,14 @@
   --accent-strong: oklch(0.82 0.21 148);
   --accent-soft: oklch(0.32 0.09 150);
   --accent-contrast: oklch(0.15 0.05 148);
-  --accent-2: oklch(0.74 0.17 42);
   --danger: oklch(0.71 0.18 25);
   --danger-soft: oklch(0.3 0.08 25);
+  --warning: oklch(0.828 0.189 84.429);
+  --warning-soft: oklch(0.3 0.08 70);
   --shadow-card: 0 2px 6px oklch(0 0 0 / 0.4), 0 16px 36px -18px oklch(0 0 0 / 0.7);
   --shadow-pop: 0 10px 20px oklch(0 0 0 / 0.5), 0 32px 60px -22px oklch(0 0 0 / 0.8);
   --glow: 0 0 28px -6px color-mix(in oklch, var(--accent-base) 55%, transparent);
   --ring-color: color-mix(in oklch, var(--accent-base) 55%, transparent);
-
-  /* shadcn semantic tokens, rewired to handoff palette */
-  --background: var(--bg);
-  --foreground: var(--text);
-  --card: var(--surface);
-  --card-foreground: var(--text);
-  --popover: var(--surface);
-  --popover-foreground: var(--text);
-  --primary: var(--accent-base);
-  --primary-foreground: var(--accent-contrast);
-  --secondary: var(--surface-2);
-  --secondary-foreground: var(--text);
-  --muted: var(--surface-inset);
-  --muted-foreground: var(--text-muted);
-  --accent: var(--accent-soft);
-  --accent-foreground: var(--accent-strong);
-  --destructive: var(--danger);
-  --border: var(--border-color);
-  --input: var(--border-color);
-  --ring: var(--ring-color);
-  --chart-1: var(--accent-base);
-  --chart-2: var(--accent-2);
-  --chart-3: var(--accent-strong);
-  --chart-4: var(--text-muted);
-  --chart-5: var(--danger);
-  --sidebar: var(--surface);
-  --sidebar-foreground: var(--text);
-  --sidebar-primary: var(--accent-base);
-  --sidebar-primary-foreground: var(--accent-contrast);
-  --sidebar-accent: var(--surface-2);
-  --sidebar-accent-foreground: var(--text);
-  --sidebar-border: var(--border-color);
-  --sidebar-ring: var(--ring-color);
-
-  /* Spotify brand */
-  --spotify: oklch(0.696 0.219 152.5);
-  --spotify-hover: oklch(0.727 0.219 152.5);
 }
 
 /* ============================================================
@@ -372,7 +298,6 @@
   font-family: var(--font-display);
   font-weight: var(--display-weight);
   letter-spacing: var(--display-spacing);
-  text-transform: var(--display-transform);
 }
 
 @utility label-text {

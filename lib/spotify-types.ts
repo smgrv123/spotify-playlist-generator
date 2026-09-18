@@ -43,16 +43,6 @@ export interface SpotifyPlaylistsResponse {
   next: string | null;
 }
 
-/**
- * A single playlist from `GET /playlists/{id}`, narrowed by a `fields`
- * projection to the list-item fields plus the snapshot id. `snapshot_id` is
- * optional like the rest of the projected extras: what actually comes back is
- * decided by the caller's `fields` string, not by this type.
- */
-export interface SpotifyPlaylistDetailResponse extends SpotifyPlaylistItem {
-  snapshot_id?: string;
-}
-
 // ─── Playlist Tracks ──────────────────────────────────────────────────────────
 
 export interface PlaylistItemContent {
@@ -74,10 +64,4 @@ export interface SpotifyPlaylistTracksResponse {
     item?: PlaylistItemContent | null;
   }>;
   next: string | null;
-}
-
-// ─── Save ─────────────────────────────────────────────────────────────────────
-
-export interface SpotifyAddItemsResponse {
-  snapshot_id: string;
 }

@@ -8,7 +8,6 @@ export interface PlaylistSummary {
   id: string;
   name: string;
   public: boolean;
-  description: string;
   imageUrl: string | null;
   /** Total track count reported by Spotify, or `null` when it wasn't returned. */
   trackCount: number | null;
@@ -33,8 +32,6 @@ export function usePlaylists({ enabled = true }: UsePlaylistsOptions = {}) {
       return data.playlists ?? [];
     },
     enabled,
-    staleTime: 30 * 1000,
-    retry: 1,
   });
 
   return {

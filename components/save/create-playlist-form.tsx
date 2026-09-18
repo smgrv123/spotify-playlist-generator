@@ -7,13 +7,13 @@ import { SaveSuccessState } from '@/components/save/save-success-state';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useSavePlaylist } from '@/hooks/use-save-playlist';
-import { VISIBILITY, type Visibility } from '@/lib/constants';
+import { BUILDER_STEP, BUILDER_STEP_META, VISIBILITY, type Visibility } from '@/lib/constants';
 import { getErrorMessage, isFailed, isResolved } from '@/lib/type-guards';
-import type { FailedTrack, ResolvedTrack } from '@/lib/types';
+import type { TrackItem } from '@/lib/types';
 
 interface CreatePlaylistFormProps {
   /** Accepts the mixed draft track array and filters internally. */
-  tracks: (ResolvedTrack | FailedTrack)[];
+  tracks: TrackItem[];
   name: string;
   onNameChange: (name: string) => void;
   visibility: Visibility;
@@ -76,7 +76,7 @@ export function CreatePlaylistForm({
   return (
     <section className="rounded-[var(--radius-lg)] border bg-surface p-6 shadow-card sm:p-8">
       <p className="label-text text-[11px] font-semibold uppercase text-accent-strong">
-        Step 03 — Publish
+        {BUILDER_STEP_META[BUILDER_STEP.SAVE].stepLabel}
       </p>
       <h2 className="display-text mt-1.5 text-[clamp(22px,3vw,28px)] leading-tight text-foreground">
         Save to Spotify
@@ -98,10 +98,7 @@ export function CreatePlaylistForm({
       </div>
 
       {failedTracks.length > 0 && (
-        <Alert
-          variant="default"
-          className="mt-5 border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/10 dark:text-amber-400"
-        >
+        <Alert variant="warning" className="mt-5">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             {failedTracks.length} unresolved track{failedTracks.length === 1 ? '' : 's'} will be

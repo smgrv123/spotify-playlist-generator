@@ -10,19 +10,21 @@ import type { PlaylistDetail } from '@/lib/types';
  * is provided.
  */
 export function usePlaylistDetail(playlistId: string | null) {
-  const { data, isLoading, error } = useQuery<PlaylistDetail>({
+  const {
+    data: detail,
+    isLoading,
+    error,
+  } = useQuery<PlaylistDetail>({
     queryKey: QUERY_KEYS.playlists.detail(playlistId ?? ''),
     queryFn: () =>
       apiFetch<PlaylistDetail>(
         `${API_ROUTES.SPOTIFY_PLAYLIST}?playlistId=${encodeURIComponent(playlistId ?? '')}`
       ),
     enabled: Boolean(playlistId),
-    staleTime: 30 * 1000,
-    retry: 1,
   });
 
   return {
-    detail: data ?? null,
+    detail: detail ?? null,
     isLoading,
     error,
   };

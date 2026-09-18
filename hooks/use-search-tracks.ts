@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
-import { apiFetch } from '@/lib/api-client';
+import { apiFetch, UnauthorizedError } from '@/lib/api-client';
 import { API_ROUTES, QUERY_KEYS } from '@/lib/constants';
+import { getErrorMessage } from '@/lib/type-guards';
 
 const SEARCH_DEBOUNCE_MS = 400;
 
@@ -43,7 +45,7 @@ export function useSearchTracks(query: string) {
 
   const enabled = debouncedQuery !== '';
 
-  const { data, isFetching } = useQuery<SearchResultTrack[]>({
+  const { data, isFetching, error } = useQuery<SearchResultTrack[]>({
     queryKey: QUERY_KEYS.searchTracks(debouncedQuery),
     queryFn: async () => {
       const data = await apiFetch<{ tracks?: SearchResultTrack[] }>(
@@ -52,13 +54,19 @@ export function useSearchTracks(query: string) {
       return data.tracks ?? [];
     },
     enabled,
-    staleTime: 30 * 1000,
-    retry: 1,
-    // Search has no inline error UI of its own (the dropdown just shows no
-    // results), so a failure is otherwise silent — this is the "cross-cutting,
-    // not tied to one visible control" case the toast policy exists for.
-    meta: { toastOnError: true },
   });
+
+  // Search has no inline error UI of its own (the dropdown just shows no
+  // results), so a failure is otherwise silent — toast it here instead. The
+  // global `UnauthorizedError` case already gets "Session expired" from
+  // `lib/query-client.ts`'s cache-level handler, so it's skipped here to
+  // avoid a double toast.
+  useEffect(() => {
+    if (error && !(error instanceof UnauthorizedError)) {
+      console.error(error);
+      toast.error(getErrorMessage(error));
+    }
+  }, [error]);
 
   return {
     results: enabled ? (data ?? []) : [],

@@ -78,9 +78,9 @@ export const deletePlaylistResponseSchema = z.object({
  * Response body for `GET /api/spotify/playlist` — one playlist's metadata
  * without its items.
  *
- * - `imageUrl`/`trackCount`/`ownerId`/`ownerName`/`snapshotId` are nullable
- *   because Spotify omits them for some playlists (and the `fields` projection
- *   makes no guarantees either).
+ * - `imageUrl`/`trackCount`/`ownerId`/`ownerName` are nullable because Spotify
+ *   omits them for some playlists (and the `fields` projection makes no
+ *   guarantees either).
  * - `isOwner` is computed server-side by comparing the playlist owner against
  *   the authenticated user; a collaborative playlist is editable without it.
  */
@@ -88,14 +88,11 @@ export const playlistDetailSchema = z.object({
   id: z.string(),
   name: z.string(),
   public: z.boolean(),
-  description: z.string(),
   imageUrl: z.string().nullable(),
   trackCount: z.number().nullable(),
   ownerId: z.string().nullable(),
   ownerName: z.string().nullable(),
   isOwner: z.boolean(),
-  collaborative: z.boolean(),
-  snapshotId: z.string().nullable(),
 });
 
 /**

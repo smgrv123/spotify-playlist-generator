@@ -111,18 +111,7 @@ export function usePlaylistEditor(
   }
 
   const reorder = (oldIndex: number, newIndex: number) => {
-    setRows((prev) => {
-      if (
-        oldIndex < 0 ||
-        oldIndex >= prev.length ||
-        newIndex < 0 ||
-        newIndex >= prev.length ||
-        oldIndex === newIndex
-      ) {
-        return prev;
-      }
-      return arrayMove(prev, oldIndex, newIndex);
-    });
+    setRows((prev) => arrayMove(prev, oldIndex, newIndex));
   };
 
   // Positional, not URI-based: a playlist can hold the same track twice, and

@@ -8,7 +8,6 @@ import { NextRequest } from 'next/server';
 
 export async function GET(request: NextRequest) {
   const reqId = crypto.randomUUID();
-  logger.info('Fetch playlist tracks request started', { reqId });
 
   try {
     const playlistId = request.nextUrl.searchParams.get('playlistId');
@@ -52,7 +51,6 @@ export async function GET(request: NextRequest) {
       nextUrl = data.next;
     }
 
-    logger.info('Fetch playlist tracks complete', { reqId, count: tracks.length, skippedCount });
     const response: PlaylistTracksResponse = { tracks, skippedCount };
     return ok(response);
   } catch (error) {

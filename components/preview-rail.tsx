@@ -1,7 +1,7 @@
 'use client';
 
 import { CoverCollage } from '@/components/cover-collage';
-import { TrackArt } from '@/components/track-art';
+import { TrackCard } from '@/components/track-card';
 import { Input } from '@/components/ui/input';
 import type { ResolvedTrack } from '@/lib/types';
 
@@ -35,8 +35,8 @@ function songLabel(count: number): string {
  * 2. Playlist-name input bound to the shell's `name` state.
  * 3. Stats line `{count} songs · {duration}`, using the acceptance-criterion
  *    format. Duration is omitted only when there are no resolved tracks.
- * 4. Compact scrollable list of resolved tracks with 28px thumbs (via
- *    `TrackArt`) and truncated title/artist rows.
+ * 4. Compact scrollable list of resolved tracks, each row a `TrackCard`
+ *    (`size="sm"`, 28px thumbs) with truncated title/artist.
  *
  * The rail turns sticky at the `2pane` breakpoint (941px) so it stays with
  * the user as they scroll the workspace. Below that it stacks (Phase 5 owns
@@ -86,17 +86,7 @@ export function PreviewRail({ tracks, name, onNameChange }: PreviewRailProps) {
                 key={track.spotifyUri}
                 className="flex items-center gap-3 rounded-[var(--radius-sm)] px-1.5 py-1.5 hover:bg-surface-2"
               >
-                <TrackArt
-                  title={title}
-                  artist={artist}
-                  imageUrl={imageUrl}
-                  sizes="28px"
-                  boxClassName="relative h-7 w-7 flex-shrink-0 overflow-hidden rounded-[6px] bg-surface-2"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-medium text-foreground">{title}</p>
-                  <p className="truncate text-[11px] text-text-faint">{artist}</p>
-                </div>
+                <TrackCard size="sm" title={title} artist={artist} imageUrl={imageUrl} />
               </div>
             );
           })

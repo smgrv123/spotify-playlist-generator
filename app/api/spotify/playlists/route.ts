@@ -1,13 +1,13 @@
 import { normalizeError, ok } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
 import { SpotifyPlaylistsResponse } from '@/lib/spotify-types';
+import { toPlaylistSummary } from '@/lib/spotify-mappers';
 import { spotifyClient } from '@/lib/spotify-client';
 import crypto from 'crypto';
 import { NextRequest } from 'next/server';
 
 export async function GET(request: NextRequest) {
   const reqId = crypto.randomUUID();
-  logger.info('Fetch user playlists request started', { reqId });
 
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -24,16 +24,8 @@ export async function GET(request: NextRequest) {
       (playlist) => playlist.owner?.id === profile.id || playlist.collaborative
     );
 
-    const mappedPlaylists = editableItems.map((playlist) => ({
-      id: playlist.id,
-      name: playlist.name,
-      public: !!playlist.public,
-      description: playlist.description || '',
-      imageUrl: playlist.images?.[0]?.url || null,
-      trackCount: playlist.tracks?.total ?? null,
-    }));
+    const mappedPlaylists = editableItems.map((playlist) => toPlaylistSummary(playlist));
 
-    logger.info('Fetch user playlists complete', { reqId, returned: mappedPlaylists.length });
     return ok({
       playlists: mappedPlaylists,
       next: data.next,

@@ -25,8 +25,6 @@ export function usePlaylistTracks(playlistId: string | null) {
       return { tracks: data.tracks ?? [], skippedCount: data.skippedCount ?? 0 };
     },
     enabled: Boolean(playlistId),
-    staleTime: 30 * 1000,
-    retry: 1,
   });
 
   return {

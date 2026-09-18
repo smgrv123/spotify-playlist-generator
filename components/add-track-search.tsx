@@ -3,7 +3,7 @@
 import { Loader2, Plus, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
-import { TrackArt } from '@/components/track-art';
+import { TrackCard } from '@/components/track-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useSearchTracks, type SearchResultTrack } from '@/hooks/use-search-tracks';
@@ -20,8 +20,8 @@ interface AddTrackSearchProps {
  * in-flight, and an absolute-positioned results panel underneath it
  * (`shadow-[var(--shadow-pop)]`, matching `.dropdown` in the handoff).
  *
- * Each result row shows album art (`TrackArt`, real image or gradient
- * fallback), title/artist, and an Add button. Rows already present in the
+ * Each result row shows album art (`TrackCard`, `size="sm"`, real image or
+ * gradient fallback), title/artist, and an Add button. Rows already present in the
  * draft (by `spotifyUri`, via `existingUris`) render at 50% opacity with an
  * "Added" label and are not clickable.
  */
@@ -109,19 +109,16 @@ export function AddTrackSearch({ onAdd, existingUris }: AddTrackSearchProps) {
                 }`}
                 onClick={() => handleSelect(track)}
               >
-                <TrackArt
+                <TrackCard
+                  size="sm"
                   title={track.name}
                   artist={track.artists.map((a) => a.name).join(', ')}
-                  imageUrl={track.image}
-                  sizes="38px"
-                  boxClassName="relative h-[38px] w-[38px] flex-shrink-0 overflow-hidden rounded-[8px] bg-surface-2"
+                  imageUrl={track.image || undefined}
+                  artSizeClassName="h-[38px] w-[38px] rounded-[8px]"
+                  artSizes="38px"
+                  titleClassName="text-[14px] font-medium"
+                  artistClassName="text-[12.5px] text-muted-foreground"
                 />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[14px] font-medium text-foreground">{track.name}</p>
-                  <p className="truncate text-[12.5px] text-muted-foreground">
-                    {track.artists.map((a) => a.name).join(', ')}
-                  </p>
-                </div>
                 <Button
                   variant="secondary"
                   size="sm"

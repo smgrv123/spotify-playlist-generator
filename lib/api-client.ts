@@ -8,9 +8,8 @@ import type { ApiError } from './types';
  * Centralizes the response handling every hook in `hooks/` used to hand-roll
  * on its own (parse JSON, check `res.ok`, narrow the body against
  * `isApiErrorShape`, `Object.assign` a message/code/details onto a plain
- * `Error`). `apiFetch` does that once so callers get a typed, thrown error
- * instead of re-deriving one from a raw `Response` — see the four error
- * classes below.
+ * `Error`). `apiFetch` does that once so callers get a thrown error instead
+ * of re-deriving one from a raw `Response`.
  *
  * Every route under `app/api/**` responds via `ok()`/`fail()` from
  * `lib/api-response.ts`, which always writes a JSON body (never an empty
@@ -35,59 +34,14 @@ export class UnauthorizedError extends Error {
 }
 
 /**
- * Thrown for any other non-2xx response.
- *
- * Mirrors the `{code, message, details?}` shape `lib/api-response.ts`'s
- * `fail()` writes — `.message` is the server's own message (or a generic
- * fallback when the body doesn't match that shape), so existing callers that
- * read `err.message` or pass `err` to `getErrorMessage()` keep working
- * unchanged.
- */
-export class ApiRequestError extends Error {
-  readonly code: string;
-  readonly details?: unknown;
-  readonly status: number;
-
-  constructor(apiError: ApiError, status: number) {
-    super(apiError.message);
-    this.name = 'ApiRequestError';
-    this.code = apiError.code;
-    this.details = apiError.details;
-    this.status = status;
-  }
-}
-
-/** Thrown when a response that should have been JSON fails to parse. */
-export class ApiParseError extends Error {
-  constructor(
-    message = 'Received an unreadable response from the server.',
-    options?: ErrorOptions
-  ) {
-    super(message, options);
-    this.name = 'ApiParseError';
-  }
-}
-
-/** Thrown when `fetch` itself rejects (offline, DNS failure, blocked request, etc). */
-export class NetworkError extends Error {
-  constructor(
-    message = 'Network request failed. Check your connection and try again.',
-    options?: ErrorOptions
-  ) {
-    super(message, options);
-    this.name = 'NetworkError';
-  }
-}
-
-/**
  * Fetches `path` and returns the parsed JSON body on a 2xx response.
  *
- * - `fetch` itself rejecting (network down, blocked, etc.) → throws `NetworkError`.
+ * - `fetch` itself rejecting (network down, blocked, etc.) → throws a plain `Error`.
  * - `401` → throws `UnauthorizedError`.
- * - any other non-2xx → throws `ApiRequestError`, built from the response
+ * - any other non-2xx → throws a plain `Error`, built from the response
  *   body when it matches `{code, message}` (`isApiErrorShape`), else a
- *   generic `ApiRequestError` carrying the HTTP status.
- * - a 2xx body that fails to parse as JSON → throws `ApiParseError`.
+ *   generic `Error` carrying the HTTP status.
+ * - a 2xx body that fails to parse as JSON → throws a plain `Error`.
  * - otherwise → returns the parsed JSON body as `T`.
  */
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -95,7 +49,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   try {
     response = await fetch(path, init);
   } catch (cause) {
-    throw new NetworkError(undefined, { cause });
+    throw new Error('Network request failed. Check your connection and try again.', { cause });
   }
 
   if (response.status === 401) {
@@ -113,19 +67,19 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     }
 
     if (isApiErrorShape(body)) {
-      throw new ApiRequestError(body, response.status);
+      throw new Error(body.message, { cause: body });
     }
 
     const fallback: ApiError = {
       code: API_ERROR_CODE.UNKNOWN_ERROR,
       message: `Request failed with status ${response.status}`,
     };
-    throw new ApiRequestError(fallback, response.status);
+    throw new Error(fallback.message);
   }
 
   try {
     return (await response.json()) as T;
   } catch (cause) {
-    throw new ApiParseError(undefined, { cause });
+    throw new Error('Received an unreadable response from the server.', { cause });
   }
 }

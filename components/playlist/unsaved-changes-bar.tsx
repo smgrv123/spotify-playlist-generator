@@ -19,8 +19,8 @@ interface UnsavedChangesBarProps {
   canSave: boolean;
   /**
    * The playlist moved on Spotify's side. Save is blocked, and the bar says so
-   * next to the disabled button — the full explanation is in the page-level
-   * `PlaylistConflictAlert`, which may be scrolled out of view from here.
+   * next to the disabled button — a fuller explanation is shown elsewhere on
+   * the page, which may be scrolled out of view from here.
    */
   isBlockedByConflict: boolean;
   /**

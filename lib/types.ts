@@ -9,6 +9,8 @@ export type ResolvedTrack = z.infer<typeof schemas.resolvedTrackSchema>;
 export type FailedTrack = z.infer<typeof schemas.failedTrackSchema>;
 export type ResolveResponse = z.infer<typeof schemas.resolveResponseSchema>;
 
+export type TrackItem = ResolvedTrack | FailedTrack;
+
 export type SaveRequest = z.infer<typeof schemas.saveRequestSchema>;
 export type SaveResponse = z.infer<typeof schemas.saveResponseSchema>;
 

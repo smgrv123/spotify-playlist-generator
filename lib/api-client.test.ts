@@ -1,11 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  ApiParseError,
-  ApiRequestError,
-  NetworkError,
-  UnauthorizedError,
-  apiFetch,
-} from './api-client';
+import { UnauthorizedError, apiFetch } from './api-client';
 
 /** Build a minimal `Response`-like object the production code can consume. */
 function mockResponse(status: number, body: unknown): Response {
@@ -30,23 +24,6 @@ describe('apiFetch', () => {
 
     await expect(apiFetch('/api/spotify/playlists')).resolves.toEqual({
       playlists: [{ id: '1' }],
-    });
-  });
-
-  it('passes path and init straight through to fetch', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(mockResponse(200, { ok: true }));
-    vi.stubGlobal('fetch', fetchMock);
-
-    await apiFetch('/api/spotify/playlist/save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ playlistName: 'Test' }),
-    });
-
-    expect(fetchMock).toHaveBeenCalledWith('/api/spotify/playlist/save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ playlistName: 'Test' }),
     });
   });
 
@@ -76,13 +53,9 @@ describe('apiFetch', () => {
 
     const error = await apiFetch('/api/spotify/playlists').catch((err) => err);
 
-    expect(error).toBeInstanceOf(ApiRequestError);
+    expect(error).toBeInstanceOf(Error);
     expect(error).not.toBeInstanceOf(UnauthorizedError);
-    expect((error as ApiRequestError).message).toBe(
-      'An unexpected internal server error occurred.'
-    );
-    expect((error as ApiRequestError).code).toBe('INTERNAL_SERVER_ERROR');
-    expect((error as ApiRequestError).status).toBe(500);
+    expect((error as Error).message).toBe('An unexpected internal server error occurred.');
   });
 
   it('carries the server message on a non-5xx, non-401 error response (e.g. 400)', async () => {
@@ -103,21 +76,20 @@ describe('apiFetch', () => {
 
     const error = await apiFetch('/api/spotify/playlists').catch((err) => err);
 
-    expect(error).toBeInstanceOf(ApiRequestError);
-    expect((error as ApiRequestError).status).toBe(502);
-    expect((error as ApiRequestError).message).toContain('502');
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toContain('502');
   });
 
-  it('throws a recognizable NetworkError when fetch itself rejects', async () => {
+  it('throws a recognizable Error when fetch itself rejects', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
 
-    await expect(apiFetch('/api/spotify/playlists')).rejects.toBeInstanceOf(NetworkError);
+    await expect(apiFetch('/api/spotify/playlists')).rejects.toBeInstanceOf(Error);
   });
 
-  it('throws a typed ApiParseError when a 2xx body fails to parse as JSON', async () => {
+  it('throws an Error when a 2xx body fails to parse as JSON', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mockUnparseableResponse(200)));
 
-    await expect(apiFetch('/api/spotify/playlists')).rejects.toBeInstanceOf(ApiParseError);
+    await expect(apiFetch('/api/spotify/playlists')).rejects.toBeInstanceOf(Error);
   });
 
   it('does not attempt to parse the body of a 401 response before throwing', async () => {

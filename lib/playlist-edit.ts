@@ -12,8 +12,6 @@ import type { ResolvedTrack } from './types';
  * Entry points:
  *
  * - `toEditableRows(tracks)`: attach a stable per-row identity to server tracks.
- * - `hasSameOrder(server, local)`: cheap "is the local sequence still the
- *   server's sequence?" check, safe to call on every render.
  * - `diffPlaylist(server, local, meta)`: the full pending-change summary that
  *   drives the sticky "N unsaved changes" bar.
  * - `orderKey(tracks)`: scalar seed for render-time state sync (see its docs).
@@ -134,35 +132,16 @@ export function toEditableRows(tracks: ResolvedTrack[]): EditableRow[] {
 }
 
 /**
- * Whether the local rows still hold the server's exact track sequence.
- *
- * Deliberately cheap: a length check first, then a `.some()` that bails on the
- * first differing position. Callers run this on every render, so it must not
- * allocate — in particular it must never build joined strings from both sides
- * (that is `orderKey`'s job, for a different purpose).
- */
-export function hasSameOrder(server: ResolvedTrack[], local: EditableRow[]): boolean {
-  if (server.length !== local.length) return false;
-  return !server.some((track, index) => track.spotifyUri !== local[index].spotifyUri);
-}
-
-/**
  * A scalar (string) fingerprint of a track sequence, for use as a *seed* in a
  * render-time state sync — e.g. resetting local rows when freshly fetched
  * server data arrives.
  *
- * This exists on purpose and is not redundant with `hasSameOrder`. A
- * render-time sync has to compare the previous value against the current one
+ * A render-time sync has to compare the previous value against the current one
  * with `Object.is`, and comparing an unmemoized array by reference makes the
  * comparison fail every render — that caused a real infinite-render loop in
  * this codebase. A derived primitive compares by value and ends the loop.
  * (Manual memoization is not the fix here: React Compiler owns memoization in
  * this repo, and a scalar seed is the cheaper, more robust answer anyway.)
- *
- * `hasSameOrder` deliberately does *not* call this: it is the hot per-render
- * equality check and must stay allocation-free, whereas `orderKey` allocates a
- * string by design because its result is stored and compared across renders.
- * Do not "optimize" one into the other.
  */
 export function orderKey(tracks: { spotifyUri: string }[]): string {
   return tracks.map((track) => track.spotifyUri).join('\n');

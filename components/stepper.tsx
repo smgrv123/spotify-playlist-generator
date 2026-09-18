@@ -1,18 +1,16 @@
 'use client';
 
 import { Check } from 'lucide-react';
+import { BUILDER_STEP, BUILDER_STEP_META } from '@/lib/constants';
 import type { BuilderStep } from '@/lib/types';
 
-interface StepDescriptor {
-  eyebrow: string;
-  title: string;
-}
-
-const STEPS: readonly StepDescriptor[] = [
-  { eyebrow: 'Import', title: 'Prepare' },
-  { eyebrow: 'Curate', title: 'Refine' },
-  { eyebrow: 'Publish', title: 'Save' },
-] as const;
+// Explicit order (not `Object.values(BUILDER_STEP_META)`) so the stepper's
+// rendered order is guaranteed regardless of object key iteration semantics.
+const STEP_ORDER: readonly BuilderStep[] = [
+  BUILDER_STEP.PREPARE,
+  BUILDER_STEP.REFINE,
+  BUILDER_STEP.SAVE,
+];
 
 interface StepperProps {
   step: BuilderStep;
@@ -32,8 +30,8 @@ interface StepperProps {
 export function Stepper({ step, maxReached, onStepChange }: StepperProps) {
   return (
     <div className="mb-7 flex items-center gap-2">
-      {STEPS.map((descriptor, rawIndex) => {
-        const index = rawIndex as BuilderStep;
+      {STEP_ORDER.map((index) => {
+        const descriptor = BUILDER_STEP_META[index];
         const isReached = index <= maxReached;
         const isActive = index === step;
         const isDone = index < step;

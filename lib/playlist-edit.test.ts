@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   diffPlaylist,
-  hasSameOrder,
   NO_PENDING_CHANGES,
   orderKey,
   planSeedSync,
@@ -77,39 +76,6 @@ describe('toEditableRows', () => {
 
   it('returns an empty list for an empty playlist', () => {
     expect(toEditableRows([])).toEqual([]);
-  });
-});
-
-describe('hasSameOrder', () => {
-  it('is true for rows derived straight from the server list', () => {
-    const server = [makeTrack(URI_A), makeTrack(URI_B), makeTrack(URI_A)];
-    expect(hasSameOrder(server, toEditableRows(server))).toBe(true);
-  });
-
-  it('returns false on a length mismatch without reading any element', () => {
-    const server = [makeTrack(URI_A), makeTrack(URI_B)];
-    const local: EditableRow[] = [
-      {
-        ...makeRows(URI_A)[0],
-        get spotifyUri(): string {
-          throw new Error('hasSameOrder scanned elements despite a length mismatch');
-        },
-      },
-    ];
-    expect(hasSameOrder(server, local)).toBe(false);
-  });
-
-  it('detects a reorder inside a duplicate-heavy list', () => {
-    const server = [makeTrack(URI_A), makeTrack(URI_B), makeTrack(URI_A), makeTrack(URI_C)];
-    const rows = toEditableRows(server);
-    expect(hasSameOrder(server, reorder(rows, [0, 1, 2, 3]))).toBe(true);
-    expect(hasSameOrder(server, reorder(rows, [0, 2, 1, 3]))).toBe(false);
-    expect(hasSameOrder(server, reorder(rows, [1, 0, 2, 3]))).toBe(false);
-  });
-
-  it('compares URIs, not row identity — freshly generated rowIds still match', () => {
-    const server = [makeTrack(URI_A), makeTrack(URI_A), makeTrack(URI_B)];
-    expect(hasSameOrder(server, makeRows(URI_A, URI_A, URI_B))).toBe(true);
   });
 });
 

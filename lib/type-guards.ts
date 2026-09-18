@@ -1,16 +1,16 @@
 import { TRACK_STATUS } from './constants';
-import { FailedTrack, ResolvedTrack } from './types';
+import { FailedTrack, ResolvedTrack, TrackItem } from './types';
 
 /**
  * Type-narrowing guards for track variants.
  * Use these instead of `as` casts when filtering mixed track arrays.
  */
 
-export function isResolved(track: ResolvedTrack | FailedTrack): track is ResolvedTrack {
+export function isResolved(track: TrackItem): track is ResolvedTrack {
   return track.status === TRACK_STATUS.RESOLVED;
 }
 
-export function isFailed(track: ResolvedTrack | FailedTrack): track is FailedTrack {
+export function isFailed(track: TrackItem): track is FailedTrack {
   return track.status === TRACK_STATUS.FAILED;
 }
 

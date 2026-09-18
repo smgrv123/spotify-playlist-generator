@@ -14,6 +14,22 @@ export interface TrackCardProps {
   isFailed?: boolean;
   /** Resolved-track duration in ms. Rendered as a mono `m:ss` label when present. */
   durationMs?: number;
+  /**
+   * `'md'` (default) is the full row used by `TrackList`/`TrackPasteForm`'s
+   * unresolved slot: 46px art, play-hover overlay, trailing duration/failed
+   * badge. `'sm'` is a compact art+title/artist pair for dense lists
+   * (preview rail, search results) with no overlay and no trailing content —
+   * the four props below only apply to it.
+   */
+  size?: 'sm' | 'md';
+  /** `size="sm"` only: Tailwind size + radius classes for the art box (e.g. `h-7 w-7 rounded-[6px]`). */
+  artSizeClassName?: string;
+  /** `size="sm"` only: the `sizes` attr passed through to `TrackArt`/`next/image` (e.g. `28px`). */
+  artSizes?: string;
+  /** `size="sm"` only: text classes for the title line (size/weight; color is always `text-foreground`). */
+  titleClassName?: string;
+  /** `size="sm"` only: text classes for the artist line (size + color). */
+  artistClassName?: string;
 }
 
 /** Formats a duration in ms as `m:ss` (e.g. `225_000` → `"3:45"`). */
@@ -36,6 +52,10 @@ function formatTrackDuration(ms: number): string {
  * drag-to-reorder, and the remove button) is owned by the caller
  * (`TrackList`) — this component only renders content and relies on an
  * ancestor `.group` for the hover-revealed play overlay.
+ *
+ * Pass `size="sm"` for the compact art+title/artist variant used by dense
+ * lists (preview rail, search results) — see `TrackCardProps` for the
+ * size-specific overrides.
  */
 export function TrackCard({
   title,
@@ -44,7 +64,30 @@ export function TrackCard({
   imageUrl,
   isFailed,
   durationMs,
+  size = 'md',
+  artSizeClassName = 'h-7 w-7 rounded-[6px]',
+  artSizes = '28px',
+  titleClassName = 'text-[13px] font-medium',
+  artistClassName = 'text-[11px] text-text-faint',
 }: TrackCardProps) {
+  if (size === 'sm') {
+    return (
+      <div className="flex w-full min-w-0 items-center gap-3">
+        <TrackArt
+          title={title}
+          artist={artist}
+          imageUrl={imageUrl}
+          sizes={artSizes}
+          boxClassName={cn('relative flex-shrink-0 overflow-hidden bg-surface-2', artSizeClassName)}
+        />
+        <div className="min-w-0 flex-1">
+          <p className={cn('truncate text-foreground', titleClassName)}>{title}</p>
+          <p className={cn('truncate', artistClassName)}>{artist}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex w-full min-w-0 items-center gap-3">
       <div className="relative h-[46px] w-[46px] flex-shrink-0 overflow-hidden rounded-[8px] bg-surface-2 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">

@@ -13,7 +13,6 @@ const CHUNK_SIZE = 10;
 
 export async function POST(request: NextRequest) {
   const reqId = crypto.randomUUID();
-  logger.info('Resolve request started', { reqId });
 
   try {
     const rawBody = await request.json();
@@ -97,7 +96,6 @@ export async function POST(request: NextRequest) {
       await Promise.all(chunkPromises);
     }
 
-    logger.info('Resolve request complete', { reqId, resolvedCount: resolvedTracks.length });
     return ok({ results: resolvedTracks });
   } catch (error) {
     if (error instanceof SyntaxError) {

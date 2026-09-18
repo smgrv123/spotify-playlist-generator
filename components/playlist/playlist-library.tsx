@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, ListMusic } from 'lucide-react';
+import { AlertCircle, ListMusic, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 import { PlaylistCard } from '@/components/playlist/playlist-card';
@@ -9,40 +9,18 @@ import { Button } from '@/components/ui/button';
 import { usePlaylists } from '@/hooks/use-playlists';
 import { getErrorMessage } from '@/lib/type-guards';
 
-/** Responsive column track shared by the real grid and the loading placeholder. */
+/** Responsive column track for the playlist grid. */
 const GRID_CLASSES = 'grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4';
 
 /**
- * Stable keys for the loading placeholders. They render a fixed number of
- * inert cards, so they need identities that don't shift — hence a named list
- * rather than array indices.
+ * Loading treatment — the same dashed-box spinner used by the playlist
+ * detail view, so the two loading states read as one app.
  */
-const PLACEHOLDER_KEYS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-
-/**
- * Loading treatment: a grid of inert cards matching the real card's box so
- * the layout doesn't jump when data lands. No `skeleton` primitive is
- * installed and this phase adds no dependencies, so the shimmer is a plain
- * `animate-pulse` — gated behind `motion-safe:` to respect reduced motion,
- * like the app's other animations.
- */
-function PlaylistGridPlaceholder() {
+function PlaylistLibraryPlaceholder() {
   return (
-    <div className={GRID_CLASSES} role="status">
-      {PLACEHOLDER_KEYS.map((key) => (
-        <div
-          key={key}
-          className="flex flex-col gap-3 rounded-[var(--radius-sm)] border border-dashed border-border bg-surface p-3 motion-safe:animate-pulse"
-          aria-hidden
-        >
-          <div className="aspect-square w-full rounded-[var(--radius-sm)] bg-surface-2" />
-          <div className="space-y-1.5">
-            <div className="h-3 w-3/4 rounded-full bg-surface-2" />
-            <div className="h-2.5 w-1/3 rounded-full bg-surface-2" />
-          </div>
-        </div>
-      ))}
-      <span className="sr-only">Loading your playlists…</span>
+    <div className="flex items-center gap-2 rounded-[var(--radius-lg)] border border-dashed border-border bg-surface-2 px-5 py-10 text-[13px] text-muted-foreground">
+      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+      Loading your playlists…
     </div>
   );
 }
@@ -93,7 +71,7 @@ export function PlaylistLibrary() {
       </header>
 
       {isLoading ? (
-        <PlaylistGridPlaceholder />
+        <PlaylistLibraryPlaceholder />
       ) : error ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />

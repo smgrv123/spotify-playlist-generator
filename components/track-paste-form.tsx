@@ -7,13 +7,12 @@ import { useState, type ReactNode } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { useResolveTracks } from '@/hooks/use-resolve-tracks';
-import { parseTracks } from '@/lib/track-parser';
-import type { FailedTrack, ResolvedTrack } from '@/lib/types';
+import { TrackPasteField } from '@/components/track-paste-field';
+import { BUILDER_STEP, BUILDER_STEP_META } from '@/lib/constants';
+import type { TrackItem } from '@/lib/types';
 
 interface TrackPasteFormProps {
-  onTracksResolved: (tracks: (ResolvedTrack | FailedTrack)[]) => void;
+  onTracksResolved: (tracks: TrackItem[]) => void;
   /**
    * Renders directly below the textarea and its formatting-hint paragraph,
    * above the chip actions and resolve button, still inside the prepare
@@ -23,11 +22,6 @@ interface TrackPasteFormProps {
    */
   unresolvedSlot?: ReactNode;
 }
-
-const PASTE_PLACEHOLDER = `Title - Artist
-Another Song - Another Artist
-
-Or JSON: [{"title":"Song","artist":"Artist"}]`;
 
 const PASTE_SAMPLE = `Midnight City - M83
 Redbone - Childish Gambino
@@ -47,34 +41,10 @@ export function TrackPasteForm({ onTracksResolved, unresolvedSlot }: TrackPasteF
   const [parseWarnings, setParseWarnings] = useState<string[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
 
-  const { mutate: resolveTracks, isPending: isResolving, error: resolveError } = useResolveTracks();
-
-  const handleResolve = () => {
-    setParseError(null);
-    setParseWarnings([]);
-
-    const { tracks: parsedTracks, warnings, error } = parseTracks(pasteValue);
-    setParseWarnings(warnings);
-
-    if (error) {
-      setParseError(error);
-      return;
-    }
-
-    resolveTracks(parsedTracks, {
-      onSuccess: (data) => {
-        setParseWarnings([]);
-        onTracksResolved(data);
-      },
-    });
-  };
-
-  const isDisabled = isResolving || !pasteValue.trim();
-
   return (
     <section className="rounded-[var(--radius-lg)] border bg-surface p-6 shadow-[var(--shadow-card)] sm:p-8">
       <p className="label-text text-[11px] font-semibold uppercase text-accent-strong">
-        Step 01 — Import
+        {BUILDER_STEP_META[BUILDER_STEP.PREPARE].stepLabel}
       </p>
       <h2 className="display-text mt-1.5 text-[clamp(22px,3vw,28px)] leading-tight text-foreground">
         Prepare your tracks
@@ -87,93 +57,102 @@ export function TrackPasteForm({ onTracksResolved, unresolvedSlot }: TrackPasteF
         <Label htmlFor="track-paste" className="block text-[12.5px] font-semibold text-foreground">
           Paste tracks
         </Label>
-        <Textarea
+        <TrackPasteField
           id="track-paste"
           value={pasteValue}
-          onChange={(event) => setPasteValue(event.target.value)}
-          placeholder={PASTE_PLACEHOLDER}
-          className="block min-h-[220px] w-full resize-y rounded-[var(--radius-sm)] border bg-surface-inset px-4 py-3 text-[14.5px] leading-relaxed text-foreground placeholder:text-text-faint transition focus:border-primary focus:bg-surface focus:outline-none focus:ring-[3px] focus:ring-ring dark:bg-surface-inset"
-        />
-        <p className="pt-1 text-[12.5px] leading-relaxed text-text-faint">
-          Use <strong className="font-semibold text-muted-foreground">Title - Artist</strong> per
-          line, or paste a JSON array with{' '}
-          <strong className="font-semibold text-muted-foreground">title</strong>,{' '}
-          <strong className="font-semibold text-muted-foreground">artist</strong>, and optional{' '}
-          <strong className="font-semibold text-muted-foreground">album</strong>.
-        </p>
-        {unresolvedSlot}
-        <div className="flex flex-wrap gap-2 pt-3">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setPasteValue(PASTE_SAMPLE)}
-            className="rounded-full border bg-surface-2 px-3.5 py-1.5 text-[12.5px] font-semibold text-muted-foreground transition hover:border-primary hover:text-foreground h-auto hover:bg-surface-2 dark:bg-surface-2 dark:hover:bg-surface-2"
-          >
-            Use a sample list
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setPasteValue('')}
-            className="rounded-full border bg-surface-2 px-3.5 py-1.5 text-[12.5px] font-semibold text-muted-foreground transition hover:border-primary hover:text-foreground h-auto hover:bg-surface-2 dark:bg-surface-2 dark:hover:bg-surface-2"
-          >
-            Clear
-          </Button>
-        </div>
-      </div>
-
-      {parseWarnings.length > 0 && (
-        <Alert
-          variant="default"
-          className="mt-5 border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900/50 dark:bg-amber-900/10 dark:text-amber-400"
+          onChange={setPasteValue}
+          onResolved={({ results, warnings, error }) => {
+            setParseWarnings(warnings);
+            setParseError(error);
+            if (error) return;
+            if (results) {
+              setParseWarnings([]);
+              onTracksResolved(results);
+            }
+          }}
         >
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            <div className="flex flex-col gap-1">
-              {parseWarnings.map((warning, index) => (
-                <span key={index}>{warning}</span>
-              ))}
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {parseError && (
-        <Alert variant="destructive" className="mt-5">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{parseError}</AlertDescription>
-        </Alert>
-      )}
-
-      {resolveError && (
-        <Alert variant="destructive" className="mt-5">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{resolveError.message}</AlertDescription>
-        </Alert>
-      )}
-
-      <div className="mt-6">
-        <Button
-          type="button"
-          onClick={handleResolve}
-          disabled={isDisabled}
-          size="lg"
-          className="h-11 px-5 text-[15px] font-semibold shadow-[var(--shadow-pop)]"
-        >
-          {isResolving ? (
+          {({ resolve, isResolving, resolveError }) => (
             <>
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              Resolving…
-            </>
-          ) : (
-            <>
-              <Wand2 className="h-4 w-4" aria-hidden />
-              Resolve tracks
+              <p className="pt-1 text-[12.5px] leading-relaxed text-text-faint">
+                Use <strong className="font-semibold text-muted-foreground">Title - Artist</strong>{' '}
+                per line, or paste a JSON array with{' '}
+                <strong className="font-semibold text-muted-foreground">title</strong>,{' '}
+                <strong className="font-semibold text-muted-foreground">artist</strong>, and
+                optional <strong className="font-semibold text-muted-foreground">album</strong>.
+              </p>
+              {unresolvedSlot}
+              <div className="flex flex-wrap gap-2 pt-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPasteValue(PASTE_SAMPLE)}
+                  className="rounded-full border bg-surface-2 px-3.5 py-1.5 text-[12.5px] font-semibold text-muted-foreground transition hover:border-primary hover:text-foreground h-auto hover:bg-surface-2 dark:bg-surface-2 dark:hover:bg-surface-2"
+                >
+                  Use a sample list
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPasteValue('')}
+                  className="rounded-full border bg-surface-2 px-3.5 py-1.5 text-[12.5px] font-semibold text-muted-foreground transition hover:border-primary hover:text-foreground h-auto hover:bg-surface-2 dark:bg-surface-2 dark:hover:bg-surface-2"
+                >
+                  Clear
+                </Button>
+              </div>
+
+              {parseWarnings.length > 0 && (
+                <Alert variant="warning" className="mt-5">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <div className="flex flex-col gap-1">
+                      {parseWarnings.map((warning, index) => (
+                        <span key={index}>{warning}</span>
+                      ))}
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {parseError && (
+                <Alert variant="destructive" className="mt-5">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{parseError}</AlertDescription>
+                </Alert>
+              )}
+
+              {resolveError && (
+                <Alert variant="destructive" className="mt-5">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{resolveError.message}</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="mt-6">
+                <Button
+                  type="button"
+                  onClick={resolve}
+                  disabled={isResolving || !pasteValue.trim()}
+                  size="lg"
+                  className="h-11 px-5 text-[15px] font-semibold shadow-[var(--shadow-pop)]"
+                >
+                  {isResolving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      Resolving…
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="h-4 w-4" aria-hidden />
+                      Resolve tracks
+                    </>
+                  )}
+                </Button>
+              </div>
             </>
           )}
-        </Button>
+        </TrackPasteField>
       </div>
 
       <div className="mt-5 flex items-center gap-3">

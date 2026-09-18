@@ -7,15 +7,10 @@ import { cn } from '@/lib/utils';
 interface NavLink {
   href: string;
   label: string;
-  /**
-   * Match the pathname exactly instead of by prefix. `/` needs this — every
-   * pathname starts with it, so a prefix match would light up permanently.
-   */
-  exact?: boolean;
 }
 
 const NAV_LINKS: NavLink[] = [
-  { href: '/', label: 'Build', exact: true },
+  { href: '/', label: 'Build' },
   { href: '/playlists', label: 'Playlists' },
 ];
 
@@ -23,9 +18,8 @@ const NAV_LINKS: NavLink[] = [
  * Primary top-bar navigation between the builder (`/`) and the playlist
  * library (`/playlists`).
  *
- * Non-exact links match by prefix so a detail route like `/playlists/<id>`
- * keeps its parent tab lit; `/` opts into an exact match because it prefixes
- * every other route. Renders nothing on `/login`, which is pre-auth and has
+ * Links match by prefix so a detail route like `/playlists/<id>` keeps its
+ * parent tab lit. Renders nothing on `/login`, which is pre-auth and has
  * nowhere to navigate to.
  */
 export function MainNav() {
@@ -35,10 +29,8 @@ export function MainNav() {
 
   return (
     <nav aria-label="Primary" className="flex items-center gap-1">
-      {NAV_LINKS.map(({ href, label, exact }) => {
-        const isActive = exact
-          ? pathname === href
-          : pathname === href || pathname.startsWith(`${href}/`);
+      {NAV_LINKS.map(({ href, label }) => {
+        const isActive = pathname === href || pathname.startsWith(`${href}/`);
 
         return (
           <Link

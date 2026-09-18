@@ -17,14 +17,11 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TrackCard } from '@/components/track-card';
-import type { FailedTrack, ResolvedTrack } from '@/lib/types';
+import type { TrackItem } from '@/lib/types';
 import { isResolved } from '@/lib/type-guards';
 import { cn } from '@/lib/utils';
-
-type TrackItem = ResolvedTrack | FailedTrack;
 
 interface TrackListProps {
   tracks: TrackItem[];
@@ -33,14 +30,6 @@ interface TrackListProps {
   emptyMessage?: string;
   /** Overrides the default fixed `h-[400px]` viewport — e.g. a shorter list nested in a longer form. */
   heightClassName?: string;
-  /**
-   * Selection-mode support (save step's Update-mode checkbox lists). When
-   * both are provided, each resolved row renders a leading checkbox and the
-   * whole row becomes clickable to toggle it — mutually exclusive with
-   * `onRemove` in practice, since callers use one mode or the other.
-   */
-  selectedUris?: Set<string>;
-  onToggleSelect?: (uri: string) => void;
   /**
    * Drag-to-reorder support (refine step's resolved-track list). When
    * provided, rows become sortable via a grip handle and this list is wrapped
@@ -76,21 +65,15 @@ function trackId(track: TrackItem, index: number, rowIds?: string[]): string {
   return rowIds?.[index] ?? (isResolved(track) ? track.spotifyUri : `failed-${index}`);
 }
 
-/** Shared row content: leading checkbox (select mode), grip handle (sortable mode), track card, trailing remove button. */
+/** Shared row content: grip handle (sortable mode), track card, trailing remove button. */
 function TrackRowContent({
   cardProps,
-  canSelect,
-  isSelected,
-  onToggle,
   canRemove,
   onRemove,
   sortable,
   dragHandleProps,
 }: {
   cardProps: React.ComponentProps<typeof TrackCard>;
-  canSelect: boolean;
-  isSelected: boolean;
-  onToggle: () => void;
   canRemove: boolean;
   onRemove: () => void;
   sortable: boolean;
@@ -101,15 +84,6 @@ function TrackRowContent({
 }) {
   return (
     <>
-      {canSelect && (
-        <Checkbox
-          checked={isSelected}
-          onCheckedChange={onToggle}
-          onClick={(event) => event.stopPropagation()}
-          className="flex-shrink-0"
-          aria-label={`Select ${cardProps.title}`}
-        />
-      )}
       {sortable ? (
         <button
           type="button"
@@ -176,8 +150,6 @@ export function TrackList({
   readOnly = false,
   emptyMessage,
   heightClassName = 'h-[400px]',
-  selectedUris,
-  onToggleSelect,
   onReorder,
   rowIds,
 }: TrackListProps) {
@@ -213,8 +185,6 @@ export function TrackList({
 
   const rows = tracks.map((track, index) => {
     const resolved = isResolved(track);
-    const canSelect = Boolean(onToggleSelect) && resolved;
-    const isSelected = resolved ? (selectedUris?.has(track.spotifyUri) ?? false) : false;
     const cardProps = resolved
       ? {
           title: track.displayData.title,
@@ -233,24 +203,16 @@ export function TrackList({
           durationMs: undefined,
         };
 
-    const handleToggle = () => {
-      if (resolved) onToggleSelect?.(track.spotifyUri);
-    };
-
     const rowClassName = cn(
       'group flex items-center gap-[13px] rounded-[var(--radius-sm)] border py-[9px] px-[11px] transition-colors',
       resolved
         ? 'border-border bg-surface hover:border-border-strong hover:bg-surface-2'
-        : 'border-danger/30 bg-danger-soft',
-      canSelect && 'cursor-pointer'
+        : 'border-danger/30 bg-danger-soft'
     );
 
     const id = ids[index];
     const rowProps = {
       cardProps,
-      canSelect,
-      isSelected,
-      onToggle: handleToggle,
       canRemove,
       onRemove: () => onRemove?.(index),
     };
@@ -260,23 +222,7 @@ export function TrackList({
     }
 
     return (
-      <div
-        key={id}
-        role={canSelect ? 'button' : undefined}
-        tabIndex={canSelect ? 0 : undefined}
-        onClick={canSelect ? handleToggle : undefined}
-        onKeyDown={
-          canSelect
-            ? (event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  handleToggle();
-                }
-              }
-            : undefined
-        }
-        className={rowClassName}
-      >
+      <div key={id} className={rowClassName}>
         <TrackRowContent {...rowProps} sortable={false} />
       </div>
     );

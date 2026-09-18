@@ -4,22 +4,15 @@ import { AlertCircle, Loader2, Plus, Wand2, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { AddTrackSearch } from '@/components/add-track-search';
+import { TrackPasteField } from '@/components/track-paste-field';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { useResolveTracks } from '@/hooks/use-resolve-tracks';
-import { parseTracks } from '@/lib/track-parser';
 import { getErrorMessage, isFailed, isResolved } from '@/lib/type-guards';
-import type { FailedTrack, ResolvedTrack } from '@/lib/types';
+import type { FailedTrack, ResolvedTrack, TrackItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 const PANEL_ID = 'add-tracks-panel';
-
-const PASTE_PLACEHOLDER = `Title - Artist
-Another Song - Another Artist
-
-Or JSON: [{"title":"Song","artist":"Artist"}]`;
 
 /** One human-readable line for a query Spotify could not match. */
 function describeFailure(track: FailedTrack): string {
@@ -59,34 +52,34 @@ export function AddTracksPanel({ existingUris, onAddTracks, disabled }: AddTrack
   const [pasteValue, setPasteValue] = useState('');
   const [issues, setIssues] = useState<string[]>([]);
 
-  const { mutate: resolveTracks, isPending: isResolving, error: resolveError } = useResolveTracks();
-
   // Derived, not synced: a save in flight force-collapses the panel without a
   // second piece of state (and so without any render-time state adjustment).
   const isExpanded = isOpen && !disabled;
 
-  const handleResolve = () => {
-    setIssues([]);
-
-    const { tracks: parsed, warnings, error } = parseTracks(pasteValue);
+  const handleResolved = ({
+    results,
+    warnings,
+    error,
+  }: {
+    results?: TrackItem[];
+    warnings: string[];
+    error: string | null;
+  }) => {
     if (error) {
       setIssues([error, ...warnings]);
       return;
     }
+    if (!results) return;
 
-    resolveTracks(parsed, {
-      onSuccess: (results) => {
-        const resolved = results.filter(isResolved);
-        const failed = results.filter(isFailed);
+    const resolved = results.filter(isResolved);
+    const failed = results.filter(isFailed);
 
-        if (resolved.length > 0) onAddTracks(resolved);
-        setIssues([...warnings, ...failed.map(describeFailure)]);
+    if (resolved.length > 0) onAddTracks(resolved);
+    setIssues([...warnings, ...failed.map(describeFailure)]);
 
-        // Only a clean sweep clears the box: if anything failed, the user
-        // keeps the text they need in order to fix it.
-        if (warnings.length === 0 && failed.length === 0) setPasteValue('');
-      },
-    });
+    // Only a clean sweep clears the box: if anything failed, the user
+    // keeps the text they need in order to fix it.
+    if (warnings.length === 0 && failed.length === 0) setPasteValue('');
   };
 
   return (
@@ -131,36 +124,49 @@ export function AddTracksPanel({ existingUris, onAddTracks, disabled }: AddTrack
             <Label htmlFor="add-tracks-paste" className="sr-only">
               Paste tracks to add
             </Label>
-            <Textarea
+            <TrackPasteField
               id="add-tracks-paste"
               value={pasteValue}
-              onChange={(event) => setPasteValue(event.target.value)}
-              placeholder={PASTE_PLACEHOLDER}
-              className="block min-h-[120px] w-full resize-y rounded-[var(--radius-sm)] border bg-surface-inset px-3.5 py-2.5 text-[14px] leading-relaxed text-foreground placeholder:text-text-faint transition focus:border-primary focus:bg-surface focus:outline-none focus:ring-[3px] focus:ring-ring dark:bg-surface-inset"
-            />
-            <p className="text-[12.5px] leading-relaxed text-text-faint">
-              One <strong className="font-semibold text-muted-foreground">Title - Artist</strong>{' '}
-              per line, or a JSON array. Added tracks go to the end of the list and are only written
-              to Spotify when you save.
-            </p>
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleResolve}
-              disabled={isResolving || !pasteValue.trim()}
+              onChange={setPasteValue}
+              minHeightClassName="min-h-[120px]"
+              onResolved={handleResolved}
             >
-              {isResolving ? (
+              {({ resolve, isResolving, resolveError }) => (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  Resolving…
-                </>
-              ) : (
-                <>
-                  <Wand2 className="h-4 w-4" aria-hidden />
-                  Resolve &amp; add
+                  <p className="text-[12.5px] leading-relaxed text-text-faint">
+                    One{' '}
+                    <strong className="font-semibold text-muted-foreground">Title - Artist</strong>{' '}
+                    per line, or a JSON array. Added tracks go to the end of the list and are only
+                    written to Spotify when you save.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={resolve}
+                    disabled={isResolving || !pasteValue.trim()}
+                  >
+                    {isResolving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                        Resolving…
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="h-4 w-4" aria-hidden />
+                        Resolve &amp; add
+                      </>
+                    )}
+                  </Button>
+
+                  {resolveError ? (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>{getErrorMessage(resolveError)}</AlertDescription>
+                    </Alert>
+                  ) : null}
                 </>
               )}
-            </Button>
+            </TrackPasteField>
           </div>
 
           {issues.length > 0 && (
@@ -176,13 +182,6 @@ export function AddTracksPanel({ existingUris, onAddTracks, disabled }: AddTrack
               </AlertDescription>
             </Alert>
           )}
-
-          {resolveError ? (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{getErrorMessage(resolveError)}</AlertDescription>
-            </Alert>
-          ) : null}
         </div>
       )}
     </div>

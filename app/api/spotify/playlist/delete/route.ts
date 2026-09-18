@@ -8,7 +8,6 @@ import { NextRequest } from 'next/server';
 
 export async function POST(request: NextRequest) {
   const reqId = crypto.randomUUID();
-  logger.info('Delete playlist request started', { reqId });
 
   try {
     const rawBody = await request.json();
@@ -31,7 +30,6 @@ export async function POST(request: NextRequest) {
 
     await spotifyClient.delete(`/playlists/${playlistId}/followers`);
 
-    logger.info('Delete playlist request complete', { reqId, playlistId });
     return ok({ playlistId });
   } catch (error) {
     if (error instanceof SyntaxError) {

@@ -1,21 +1,19 @@
 'use client';
 
 import { arrayMove } from '@dnd-kit/sortable';
-import { AlertCircle } from 'lucide-react';
 import { useSyncExternalStore } from 'react';
 
 import { AddTrackSearch } from '@/components/add-track-search';
 import { PreviewRail } from '@/components/preview-rail';
 import { CreatePlaylistForm } from '@/components/save/create-playlist-form';
 import { Stepper } from '@/components/stepper';
+import { TrackCard } from '@/components/track-card';
 import { TrackList } from '@/components/track-list';
 import { TrackPasteForm } from '@/components/track-paste-form';
-import { BUILDER_STEP, type Visibility } from '@/lib/constants';
+import { BUILDER_STEP, BUILDER_STEP_META, type Visibility } from '@/lib/constants';
 import * as draftStore from '@/lib/draft-store';
 import { isFailed, isResolved } from '@/lib/type-guards';
-import type { BuilderStep, FailedTrack, ResolvedTrack } from '@/lib/types';
-
-type TrackItem = ResolvedTrack | FailedTrack;
+import type { BuilderStep, ResolvedTrack, TrackItem } from '@/lib/types';
 
 /**
  * Top-level builder UI rendered on `/` for authenticated users.
@@ -88,14 +86,6 @@ export function BuilderShell() {
   const handleReorderResolved = (oldIndex: number, newIndex: number) => {
     draftStore.update((prev) => {
       const resolved = prev.tracks.filter(isResolved);
-      if (
-        oldIndex < 0 ||
-        oldIndex >= resolved.length ||
-        newIndex < 0 ||
-        newIndex >= resolved.length
-      ) {
-        return prev;
-      }
       const reordered = arrayMove(resolved, oldIndex, newIndex);
       let cursor = 0;
       const tracks = prev.tracks.map((track) => (isResolved(track) ? reordered[cursor++] : track));
@@ -133,12 +123,11 @@ export function BuilderShell() {
                         key={`${track.query.title}-${track.query.artist}-${index}`}
                         className="flex items-center gap-3 rounded-[var(--radius-sm)] border border-destructive/40 bg-destructive/10 p-3"
                       >
-                        <AlertCircle className="h-4 w-4 shrink-0 text-destructive" aria-hidden />
-                        <span className="min-w-0 flex-1 truncate text-[14px] text-foreground">
-                          {track.query.title}
-                          {track.query.artist ? ` — ${track.query.artist}` : ''}
-                        </span>
-                        <span className="shrink-0 text-[12px] text-text-faint">No match</span>
+                        <TrackCard
+                          isFailed
+                          title={track.query.title}
+                          artist={track.query.artist ?? ''}
+                        />
                       </div>
                     ))}
                   </section>
@@ -150,7 +139,7 @@ export function BuilderShell() {
           {draft.step === BUILDER_STEP.REFINE && (
             <section className="rounded-[var(--radius-lg)] border bg-surface p-6 shadow-[var(--shadow-card)] sm:p-8">
               <p className="label-text text-[11px] font-semibold uppercase text-accent-strong">
-                Step 02 — Curate
+                {BUILDER_STEP_META[BUILDER_STEP.REFINE].stepLabel}
               </p>
               <h2 className="display-text mt-1.5 text-[clamp(22px,3vw,28px)] leading-tight text-foreground">
                 Review &amp; refine
