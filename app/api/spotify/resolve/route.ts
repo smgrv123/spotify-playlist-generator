@@ -1,4 +1,5 @@
 import { fail, normalizeError, ok } from '@/lib/api-response';
+import { FAILED_REASON, TRACK_STATUS } from '@/lib/constants';
 import { logger } from '@/lib/logger';
 import { resolveRequestSchema } from '@/lib/schemas';
 import { SpotifySearchResponse } from '@/lib/spotify-types';
@@ -57,8 +58,8 @@ export async function POST(request: NextRequest) {
 
             if (items.length === 0) {
               resolvedTracks[globalIndex] = {
-                status: 'failed',
-                reason: 'NO_MATCH',
+                status: TRACK_STATUS.FAILED,
+                reason: FAILED_REASON.NO_MATCH,
                 query: { title: track.title, artist: track.artist },
               };
               return;
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
 
             const matchedTrack = items[0];
             resolvedTracks[globalIndex] = {
-              status: 'resolved',
+              status: TRACK_STATUS.RESOLVED,
               spotifyUri: matchedTrack.uri,
               spotifyTrackId: matchedTrack.id,
               durationMs: matchedTrack.duration_ms,
@@ -85,8 +86,8 @@ export async function POST(request: NextRequest) {
               error: error instanceof Error ? error.message : 'Unknown error',
             });
             resolvedTracks[globalIndex] = {
-              status: 'failed',
-              reason: 'SEARCH_ERROR',
+              status: TRACK_STATUS.FAILED,
+              reason: FAILED_REASON.SEARCH_ERROR,
               query: { title: track.title, artist: track.artist },
             };
           }

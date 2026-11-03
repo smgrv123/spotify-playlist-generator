@@ -98,7 +98,7 @@ async function spotifyFetch<T>(endpoint: string, options: FetchOptions = {}): Pr
       return {} as T;
     }
     try {
-      return JSON.parse(text) as T;
+      return JSON.parse(text);
     } catch (parseError) {
       console.error('Failed to parse Spotify response body:', parseError);
       throw new Error('Failed to parse Spotify response body.');

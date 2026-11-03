@@ -4,9 +4,8 @@ import { SpotifyPlaylistsResponse, SpotifyPlaylistItem } from '@/lib/spotify-typ
 import { toPlaylistSummary } from '@/lib/spotify-mappers';
 import { spotifyClient } from '@/lib/spotify-client';
 import crypto from 'crypto';
-import { NextRequest } from 'next/server';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   const reqId = crypto.randomUUID();
 
   try {

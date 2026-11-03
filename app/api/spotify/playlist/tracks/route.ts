@@ -1,4 +1,5 @@
 import { fail, normalizeError, ok } from '@/lib/api-response';
+import { TRACK_STATUS } from '@/lib/constants';
 import { logger } from '@/lib/logger';
 import { SpotifyPlaylistTracksResponse } from '@/lib/spotify-types';
 import { spotifyClient } from '@/lib/spotify-client';
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
         }
 
         tracks.push({
-          status: 'resolved',
+          status: TRACK_STATUS.RESOLVED,
           spotifyUri: content.uri,
           spotifyTrackId: content.id,
           durationMs: content.duration_ms ?? 0,

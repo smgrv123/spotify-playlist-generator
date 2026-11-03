@@ -30,10 +30,7 @@ export function normalizeError(error: unknown): NextResponse<ApiError> {
   }
 
   if (isApiErrorShape(error)) {
-    const statusValue =
-      typeof (error as Record<string, unknown>).status === 'number'
-        ? ((error as Record<string, unknown>).status as number)
-        : 500;
+    const statusValue = 'status' in error && typeof error.status === 'number' ? error.status : 500;
     return fail(error.code, error.message, statusValue, error.details);
   }
 
@@ -45,12 +42,13 @@ export function parseExternalError(error: unknown, fallbackMessage: string): Api
   let parsedDetails: unknown = undefined;
 
   if (typeof error === 'object' && error !== null) {
-    const err = error as Record<string, unknown>;
-    const directError = err?.error as Record<string, unknown> | string | undefined;
+    const directError = 'error' in error ? error.error : undefined;
     const externalMessage =
-      (typeof directError === 'object' && directError !== null ? directError.message : undefined) ||
-      err?.message ||
-      err?.error_description;
+      (typeof directError === 'object' && directError !== null && 'message' in directError
+        ? directError.message
+        : undefined) ||
+      ('message' in error ? error.message : undefined) ||
+      ('error_description' in error ? error.error_description : undefined);
 
     if (typeof externalMessage === 'string') {
       parsedDetails = { externalMessage };

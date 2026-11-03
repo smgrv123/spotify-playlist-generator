@@ -43,6 +43,13 @@ export interface SpotifyPlaylistsResponse {
   next: string | null;
 }
 
+// ─── Playlist Writes ──────────────────────────────────────────────────────────
+
+/** Body returned by add-items (POST) and replace-items (PUT) on a playlist. */
+export interface SpotifySnapshotResponse {
+  snapshot_id: string;
+}
+
 // ─── Playlist Tracks ──────────────────────────────────────────────────────────
 
 export interface PlaylistItemContent {

@@ -72,13 +72,13 @@ Update all API route files to import from shared type/constant modules. Clean up
 
 ### Acceptance criteria
 
-- [ ] `lib/constants.ts` exists with all `as const` enum objects.
-- [ ] Zod schemas derive enums from `as const` objects; no inline string union arrays in schemas.
-- [ ] `lib/spotify-types.ts` exists; no duplicate Spotify interface definitions remain across route files.
-- [ ] `lib/type-guards.ts` exists with `isResolved`, `isFailed`, `getErrorMessage`.
-- [ ] All API routes import from shared modules.
-- [ ] Zero `as Record<string, unknown>` casts remain in `lib/api-response.ts`.
-- [ ] Gate passes: `pnpm lint && pnpm typecheck && pnpm build`.
+- [x] `lib/constants.ts` exists with all `as const` enum objects. — _Superseded in part: `SAVE_MODE` was removed by `plans/playlist-management-pages-plan.md` Phase 6 (update strategy lives in `UPDATE_MODE`); no auth-status string union exists to enumerate (session is the boolean `isAuthenticated` per Phase 3)._
+- [x] Zod schemas derive enums from `as const` objects; no inline string union arrays in schemas.
+- [x] `lib/spotify-types.ts` exists; no duplicate Spotify interface definitions remain across route files.
+- [x] `lib/type-guards.ts` exists with `isResolved`, `isFailed`, `getErrorMessage`.
+- [x] All API routes import from shared modules.
+- [x] Zero `as Record<string, unknown>` casts remain in `lib/api-response.ts`.
+- [x] Gate passes: `pnpm lint && pnpm typecheck && pnpm build`.
 
 ---
 

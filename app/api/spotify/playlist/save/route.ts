@@ -1,17 +1,15 @@
 import { fail, normalizeError, ok } from '@/lib/api-response';
+import { SAVE_RESPONSE_MODE, UPDATE_MODE } from '@/lib/constants';
 import { logger } from '@/lib/logger';
 import { saveRequestSchema } from '@/lib/schemas';
 import { spotifyClient } from '@/lib/spotify-client';
+import { SpotifySnapshotResponse } from '@/lib/spotify-types';
 import { formatZodErrors } from '@/lib/utils';
 import crypto from 'crypto';
 import { NextRequest } from 'next/server';
 
 // Spotify natively enforces exactly 100 URIs per add-items request
 const MAX_URIS_PER_REQUEST = 100;
-
-interface AddItemsResponse {
-  snapshot_id: string;
-}
 
 export async function POST(request: NextRequest) {
   const reqId = crypto.randomUUID();
@@ -60,13 +58,13 @@ export async function POST(request: NextRequest) {
     if (isUpdate) {
       targetPlaylistId = playlistId;
 
-      if (mode === 'replace') {
+      if (mode === UPDATE_MODE.REPLACE) {
         // The Spotify PUT /playlists/{playlist_id}/items endpoint actually overwrites everything.
         // So, we don't need to clear it first with an empty array.
         // We will perform the PUT with the first chunk, and then POST the rest.
         // An empty list is allowed: it is how a playlist gets cleared, and it is
         // also what a rename-only save sends.
-      } else if (mode === 'append') {
+      } else if (mode === UPDATE_MODE.APPEND) {
         // Appending nothing is a no-op request, not a valid save.
         if (uris.length === 0) {
           logger.warn('Append attempted with zero tracks', { reqId, targetPlaylistId });
@@ -113,7 +111,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Now, add tracks to the target playlist
-    if (isUpdate && mode === 'replace') {
+    if (isUpdate && mode === UPDATE_MODE.REPLACE) {
       // KNOWN FAILURE MODE — a partial write truncates the playlist.
       //
       // Spotify has no "replace with N > 100 items" call, so a replace is a PUT
@@ -141,7 +139,7 @@ export async function POST(request: NextRequest) {
         reqId,
         chunkSize: initialChunk.length,
       });
-      const replaceResponse = await spotifyClient.put<AddItemsResponse>(
+      const replaceResponse = await spotifyClient.put<SpotifySnapshotResponse>(
         `/playlists/${encodeURIComponent(targetPlaylistId)}/items`,
         { uris: initialChunk }
       );
@@ -155,7 +153,7 @@ export async function POST(request: NextRequest) {
           chunkStart: i,
           chunkSize: chunk.length,
         });
-        const addRes = await spotifyClient.post<{ snapshot_id: string }>(
+        const addRes = await spotifyClient.post<SpotifySnapshotResponse>(
           `/playlists/${encodeURIComponent(targetPlaylistId)}/items`,
           { uris: chunk }
         );
@@ -170,7 +168,7 @@ export async function POST(request: NextRequest) {
           chunkStart: i,
           chunkSize: chunk.length,
         });
-        const addRes = await spotifyClient.post<{ snapshot_id: string }>(
+        const addRes = await spotifyClient.post<SpotifySnapshotResponse>(
           `/playlists/${encodeURIComponent(targetPlaylistId)}/items`,
           { uris: chunk }
         );
@@ -186,7 +184,7 @@ export async function POST(request: NextRequest) {
     return ok({
       playlistId: targetPlaylistId,
       snapshotId: finalSnapshotId,
-      mode: isUpdate ? 'updated' : 'created',
+      mode: isUpdate ? SAVE_RESPONSE_MODE.UPDATED : SAVE_RESPONSE_MODE.CREATED,
     });
   } catch (error) {
     logger.error('Save playlist pipeline failed entirely', error, { reqId });
