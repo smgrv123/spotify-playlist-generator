@@ -20,6 +20,7 @@ export const APP_DESCRIPTION =
 export const API_ROUTES = {
   AUTH_SESSION: '/api/auth/session',
   AUTH_LOGIN: '/api/auth/login',
+  AUTH_LOGOUT: '/api/auth/logout',
   SPOTIFY_SEARCH: '/api/spotify/search',
   SPOTIFY_RESOLVE: '/api/spotify/resolve',
   SPOTIFY_PLAYLISTS: '/api/spotify/playlists',

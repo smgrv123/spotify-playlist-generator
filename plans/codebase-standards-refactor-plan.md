@@ -72,7 +72,7 @@ Update all API route files to import from shared type/constant modules. Clean up
 
 ### Acceptance criteria
 
-- [x] `lib/constants.ts` exists with all `as const` enum objects. — _Superseded in part: `SAVE_MODE` was removed by `plans/playlist-management-pages-plan.md` Phase 6 (update strategy lives in `UPDATE_MODE`); no auth-status string union exists to enumerate (session is the boolean `isAuthenticated` per Phase 3)._
+- [x] `lib/constants.ts` exists with all `as const` enum objects. — _Superseded in part: `SAVE_MODE` was removed by `plans/playlist-management-pages-plan.md` Phase 6 (update strategy lives in `UPDATE_MODE`); no auth-status string union exists to enumerate (session state is the typed `user` profile exposed by `useSession` per Phase 3)._
 - [x] Zod schemas derive enums from `as const` objects; no inline string union arrays in schemas.
 - [x] `lib/spotify-types.ts` exists; no duplicate Spotify interface definitions remain across route files.
 - [x] `lib/type-guards.ts` exists with `isResolved`, `isFailed`, `getErrorMessage`.
@@ -96,11 +96,11 @@ Rewrite `playlist-builder.tsx` to use `useSession()` and `useLogout()` instead o
 
 ### Acceptance criteria
 
-- [ ] `useSession` hook exists and returns typed auth state.
-- [ ] `useLogout` hook exists and invalidates session on success.
-- [ ] `playlist-builder.tsx` uses hooks; no manual `fetch` for session/logout.
-- [ ] Auth flow is demoable: loading → unauthenticated → login → authenticated → logout.
-- [ ] Gate passes: `pnpm lint && pnpm typecheck && pnpm build`.
+- [x] `useSession` hook exists and returns typed auth state. — _Superseded in part: returns `{ user: UserProfile | null }` (typed via `SessionResponse`) rather than `{ isAuthenticated, isLoading }`; the `(app)` layout's server-side gate owns auth gating and `UserChip` renders nothing until the profile loads, so no consumer needs those flags (`plans/playlist-builder-redesign-prd.md:86`)._
+- [x] `useLogout` hook exists and invalidates session on success. — _Superseded in part: on success it also resets the builder draft and calls `queryClient.clear()` (drops the session and every other user-scoped cache, with no refetch) before routing to `/login`; an explicit sign-out must not leak the draft to the next account, unlike the 401 path which preserves it for restore. Restored after the redesign dropped it (`plans/playlist-builder-redesign-prd.md:31`, story 4: "can log out from there")._
+- [x] `playlist-builder.tsx` uses hooks; no manual `fetch` for session/logout. — _Superseded: `playlist-builder.tsx` was replaced by `components/builder-shell.tsx` + `components/top-bar.tsx` / `components/user-chip.tsx`; logout is the `UserChip` icon button calling `useLogout()`, and no component calls `fetch` for session/logout (`plans/playlist-builder-redesign-plan.md`)._
+- [ ] Auth flow is demoable: loading → unauthenticated → login → authenticated → logout. _(Manual verification pending.)_
+- [x] Gate passes: `pnpm lint && pnpm typecheck && pnpm build`.
 
 ---
 
