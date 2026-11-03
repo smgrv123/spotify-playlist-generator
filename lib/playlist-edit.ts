@@ -1,3 +1,4 @@
+import { SEED_SYNC_ACTION, type SeedSyncAction } from './constants';
 import type { ResolvedTrack } from './types';
 
 /**
@@ -148,17 +149,6 @@ export function orderKey(tracks: { spotifyUri: string }[]): string {
 }
 
 /**
- * What the editor's render-time state sync should do on this render.
- *
- * - `reseed`: adopt the server's data wholesale (rows, name, visibility, and
- *   the diff baseline).
- * - `conflict`: refuse to adopt it. The server moved *and* the user has
- *   unsaved work that a re-seed would silently destroy.
- * - `none`: leave local state alone.
- */
-export type SeedSyncAction = 'none' | 'reseed' | 'conflict';
-
-/**
  * Inputs to `planSeedSync`.
  *
  * - `isStale`: freshly fetched server data no longer matches what local state
@@ -192,8 +182,10 @@ export interface SeedSyncState {
  * a render.
  */
 export function planSeedSync(state: SeedSyncState): SeedSyncAction {
-  if (state.hasPendingChanges) return state.isStale ? 'conflict' : 'none';
-  return state.isStale || state.hasConflict ? 'reseed' : 'none';
+  if (state.hasPendingChanges) {
+    return state.isStale ? SEED_SYNC_ACTION.CONFLICT : SEED_SYNC_ACTION.NONE;
+  }
+  return state.isStale || state.hasConflict ? SEED_SYNC_ACTION.RESEED : SEED_SYNC_ACTION.NONE;
 }
 
 /**

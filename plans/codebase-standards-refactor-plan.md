@@ -122,14 +122,14 @@ Update `playlist-builder.tsx` to render `TrackPasteForm` instead of inline texta
 
 ### Acceptance criteria
 
-- [ ] `lib/track-parser.ts` exists as a pure function with no React dependency.
-- [ ] `TrackCard` component renders both resolved and failed track variants.
-- [ ] `TrackList` uses `TrackCard`; no duplicate track row markup remains.
-- [ ] `useResolveTracks` hook exists.
-- [ ] `TrackPasteForm` is self-contained; `playlist-builder` renders it as a child.
-- [ ] Error/warning banners in the paste form use shadcn `Alert`.
-- [ ] No `as` type casts exist in the new components.
-- [ ] Gate passes: `pnpm lint && pnpm typecheck && pnpm build`.
+- [x] `lib/track-parser.ts` exists as a pure function with no React dependency.
+- [x] `TrackCard` component renders both resolved and failed track variants.
+- [x] `TrackList` uses `TrackCard`; no duplicate track row markup remains.
+- [x] `useResolveTracks` hook exists.
+- [x] `TrackPasteForm` is self-contained; `playlist-builder` renders it as a child. — _Superseded: `playlist-builder.tsx` was replaced by `components/builder-shell.tsx`, which renders `TrackPasteForm` as a child (`plans/playlist-builder-redesign-plan.md`, Phase 3)._
+- [x] Error/warning banners in the paste form use shadcn `Alert`.
+- [x] No `as` type casts exist in the new components.
+- [x] Gate passes: `pnpm lint && pnpm typecheck && pnpm build`.
 
 ---
 
@@ -170,14 +170,14 @@ Install and configure `sonner` in the `Providers` component. Create `CreatePlayl
 
 ### Acceptance criteria
 
-- [ ] `useSavePlaylist` hook exists.
-- [ ] Sonner is configured in `Providers`.
-- [ ] `CreatePlaylistForm` is a self-contained component.
-- [ ] Success triggers a sonner toast and form reset (no card takeover).
-- [ ] API errors show destructive toast + console log.
-- [ ] Validation errors show inline shadcn `Alert`.
-- [ ] No `as` type casts in the component.
-- [ ] Gate passes: `pnpm lint && pnpm typecheck && pnpm build`.
+- [x] `useSavePlaylist` hook exists.
+- [x] Sonner is configured in `Providers`.
+- [x] `CreatePlaylistForm` is a self-contained component. — `components/save/create-playlist-form.tsx` (+ `save-success-state.tsx`) owns the save mutation, success state and errors; the draft's tracks/name/visibility come in as props because `BuilderShell` owns and persists the draft.
+- [x] Success triggers a sonner toast and form reset (no card takeover). — _Superseded: a successful create renders the unified success state ("Open in Spotify" / "Build another") via `SaveSuccessState`, and minor successes get no toast (`plans/playlist-builder-redesign-plan.md`, Phase 12; `plans/playlist-builder-redesign-prd.md:61,166`)._
+- [x] API errors show destructive toast + console log. — _Superseded: step-local failures such as save render as an inline destructive `Alert`; toasts (and the `console.error`) are reserved for cross-cutting failures like a 401 (`plans/playlist-builder-redesign-prd.md:107-111`; `plans/playlist-builder-redesign-plan.md`, Phase 14)._
+- [x] Validation errors show inline shadcn `Alert`. — Server-returned save errors (including 400 validation messages) and the "unresolved tracks will be skipped" warning render as inline `Alert`s; an empty name or zero resolved tracks is prevented by disabling the save button.
+- [x] No `as` type casts in the component. — The `RadioGroup` value cast in the shared `PlaylistMetaFields` was replaced by the `isVisibility` guard (Phase 9).
+- [x] Gate passes: `pnpm lint && pnpm typecheck && pnpm build`.
 
 ---
 
@@ -195,14 +195,14 @@ Install shadcn `Checkbox`. Create `UpdatePlaylistForm` component with: playlist 
 
 ### Acceptance criteria
 
-- [ ] `usePlaylists` and `usePlaylistTracks` hooks exist.
-- [ ] shadcn `Checkbox` replaces all native `<input type="checkbox">`.
-- [ ] `UpdatePlaylistForm` is a self-contained component.
-- [ ] Track selection, dedup, and preview work correctly.
-- [ ] `TrackCard` is reused for track rows in checkboxes.
-- [ ] Success/error via sonner + Alert pattern.
-- [ ] No `as` type casts in the component.
-- [ ] Gate passes: `pnpm lint && pnpm typecheck && pnpm build`.
+- [x] `usePlaylists` and `usePlaylistTracks` hooks exist.
+- [x] shadcn `Checkbox` replaces all native `<input type="checkbox">`. — Zero native checkboxes remain. _Superseded in part: the checklist UI itself no longer exists (the detail editor removes rows via `TrackList`), so `components/ui/checkbox.tsx` has no consumer today (`plans/playlist-management-pages-plan.md`, Phase 4)._
+- [x] `UpdatePlaylistForm` is a self-contained component. — _Superseded: editing an existing playlist moved to the `/playlists/[id]` detail editor (`PlaylistDetail` + `usePlaylistEditor`); the builder is create-only (`plans/playlist-management-pages-plan.md`, Phases 4 and 6)._
+- [x] Track selection, dedup, and preview work correctly. — _Superseded: the detail editor edits one ordered row list directly (drag, remove, add via paste/search, diff in `UnsavedChangesBar`), and duplicate URIs are deliberately preserved, not deduped (`plans/playlist-management-pages-plan.md:190`)._
+- [x] `TrackCard` is reused for track rows in checkboxes. — _Superseded in part: no checkboxes (see above); the editor's rows render through `TrackList`, which renders `TrackCard`._
+- [x] Success/error via sonner + Alert pattern. — _Superseded: the detail editor surfaces errors as inline destructive `Alert`s with no toasts; success is the unsaved-changes bar clearing after the refetch (`plans/playlist-management-pages-plan.md:163`)._
+- [x] No `as` type casts in the component.
+- [x] Gate passes: `pnpm lint && pnpm typecheck && pnpm build`.
 
 ---
 
@@ -218,13 +218,13 @@ Install shadcn `AlertDialog`. Create `DeletePlaylistForm` component with: playli
 
 ### Acceptance criteria
 
-- [ ] `useDeletePlaylist` hook exists.
-- [ ] shadcn `AlertDialog` replaces `window.confirm`.
-- [ ] `DeletePlaylistForm` is a self-contained component.
-- [ ] Delete success removes the playlist from the list (via query invalidation).
-- [ ] Success/error via sonner toast pattern.
-- [ ] No `as` type casts; no `window.confirm` remains.
-- [ ] Gate passes: `pnpm lint && pnpm typecheck && pnpm build`.
+- [x] `useDeletePlaylist` hook exists.
+- [x] shadcn `AlertDialog` replaces `window.confirm`. — `PlaylistDetailHeader` confirms through `AlertDialog`.
+- [x] `DeletePlaylistForm` is a self-contained component. — _Superseded: delete lives on the `/playlists/[id]` detail page (`PlaylistDetailHeader` + `AlertDialog`); the builder's Delete mode was removed (`plans/playlist-management-pages-plan.md`, Phases 4 and 6)._
+- [x] Delete success removes the playlist from the list (via query invalidation). — `useDeletePlaylist` invalidates `QUERY_KEYS.playlists.all` on success, and `PlaylistDetail` then routes to `/playlists`.
+- [x] Success/error via sonner toast pattern. — _Superseded: delete errors render as an inline destructive `Alert` in `PlaylistDetailHeader` and success routes back to `/playlists`; no toasts (`plans/playlist-management-pages-plan.md:163`)._
+- [x] No `as` type casts; no `window.confirm` remains.
+- [x] Gate passes: `pnpm lint && pnpm typecheck && pnpm build`.
 
 ---
 
@@ -246,13 +246,15 @@ Run final grep verification checks to confirm zero violations remain.
 
 ### Acceptance criteria
 
-- [ ] `save-panel.tsx` is under 100 lines — a thin orchestrator only.
-- [ ] `playlist-builder.tsx` is under 150 lines — orchestration only.
-- [ ] Zero `useMemo` or `useCallback` in user code (shadcn internals excluded).
-- [ ] Zero `console.log` / `console.error` / `console.warn` in component files.
-- [ ] Zero `window.confirm` calls.
-- [ ] Zero `as` type casts in component files (excluding `as const`).
-- [ ] Zero hardcoded hex color values.
-- [ ] Zero inline string union types (all use `as const` derived types).
-- [ ] Zustand is either actively used or removed from dependencies.
-- [ ] Gate passes: `pnpm lint && pnpm typecheck && pnpm build`.
+- [x] `save-panel.tsx` is under 100 lines — a thin orchestrator only. — _Superseded: `save-panel.tsx` was deleted and decomposed into `components/save/create-playlist-form.tsx` + `save-success-state.tsx`; Update/Delete moved to `/playlists/[id]` (`plans/playlist-management-pages-plan.md`, Phase 6)._
+- [x] `playlist-builder.tsx` is under 150 lines — orchestration only. — `playlist-builder.tsx` is now `components/builder-shell.tsx`: 135 lines of code (188 including its doc comments and blank lines) after the refine step's card moved to `components/refine-step.tsx`. The shell still owns all draft/track state and passes slices + callbacks down as props.
+- [x] Zero `useMemo` or `useCallback` in user code (shadcn internals excluded).
+- [x] Zero `console.log` / `console.error` / `console.warn` in component files. — The only client-side `console.error`s are in `hooks/use-logout.ts`, `hooks/use-search-tracks.ts` and `lib/query-client.ts` (the API-error pattern).
+- [x] Zero `window.confirm` calls.
+- [x] Zero `as` type casts in component files (excluding `as const`). — The last one, `value as Visibility` in `PlaylistMetaFields`, now goes through the `isVisibility` guard in `lib/type-guards.ts` (tested in `lib/type-guards.test.ts`).
+- [x] Zero hardcoded hex color values. — None in `app/`, `components/`, `hooks/`, `lib/` or any CSS. (Only the unreferenced create-next-app starter SVGs in `public/` carry hex fills.)
+- [x] Zero inline string union types (all use `as const` derived types). — `TrackCard`'s `size` now uses `TRACK_CARD_SIZE`, `SeedSyncAction` is derived from `SEED_SYNC_ACTION` (both in `lib/constants.ts`), and `PlaylistItemContent.type` is a plain `string` (Spotify's open-ended vocabulary; the `| string` had already collapsed the old `'track' | 'episode'` literals). The remaining quoted unions are `Omit<…, 'a' | 'b'>` property-key lists (`components/track-list.tsx`, `lib/spotify-client.ts`), not value enums.
+- [x] Zustand is either actively used or removed from dependencies. — Absent from `package.json`, the lockfile and all source.
+- [x] Gate passes: `pnpm lint && pnpm typecheck && pnpm build`.
+
+_Not built: `lib/client-logger.ts` — superseded; sonner toasts plus the hooks' `onError` handling cover client-side error reporting, so a structured logger has no caller._

@@ -1,6 +1,7 @@
 import { AlertCircle, Play } from 'lucide-react';
 
 import { TrackArt } from '@/components/track-art';
+import { TRACK_CARD_SIZE, type TrackCardSize } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
 /**
@@ -21,7 +22,7 @@ export interface TrackCardProps {
    * (preview rail, search results) with no overlay and no trailing content —
    * the four props below only apply to it.
    */
-  size?: 'sm' | 'md';
+  size?: TrackCardSize;
   /** `size="sm"` only: Tailwind size + radius classes for the art box (e.g. `h-7 w-7 rounded-[6px]`). */
   artSizeClassName?: string;
   /** `size="sm"` only: the `sizes` attr passed through to `TrackArt`/`next/image` (e.g. `28px`). */
@@ -64,13 +65,13 @@ export function TrackCard({
   imageUrl,
   isFailed,
   durationMs,
-  size = 'md',
+  size = TRACK_CARD_SIZE.MD,
   artSizeClassName = 'h-7 w-7 rounded-[6px]',
   artSizes = '28px',
   titleClassName = 'text-[13px] font-medium',
   artistClassName = 'text-[11px] text-text-faint',
 }: TrackCardProps) {
-  if (size === 'sm') {
+  if (size === TRACK_CARD_SIZE.SM) {
     return (
       <div className="flex w-full min-w-0 items-center gap-3">
         <TrackArt

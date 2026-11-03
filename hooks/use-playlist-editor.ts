@@ -2,7 +2,7 @@ import { arrayMove } from '@dnd-kit/sortable';
 import { useState } from 'react';
 
 import { useSavePlaylist } from '@/hooks/use-save-playlist';
-import { UPDATE_MODE } from '@/lib/constants';
+import { SEED_SYNC_ACTION, UPDATE_MODE } from '@/lib/constants';
 import {
   diffPlaylist,
   NO_PENDING_CHANGES,
@@ -102,11 +102,11 @@ export function usePlaylistEditor(
     hasPendingChanges: diff.total > 0,
     hasConflict,
   });
-  if (detail && action !== 'none') {
+  if (detail && action !== SEED_SYNC_ACTION.NONE) {
     // A no-op when the seed did not move (React bails out on `Object.is`),
     // which is the case on the conflict-recovery re-seed.
     setSyncedSeed(seed);
-    if (action === 'reseed') seedFrom(detail, serverTracks);
+    if (action === SEED_SYNC_ACTION.RESEED) seedFrom(detail, serverTracks);
     else setHasConflict(true);
   }
 

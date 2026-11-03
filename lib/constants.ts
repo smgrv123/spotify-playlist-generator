@@ -73,6 +73,34 @@ export const VISIBILITY = {
 
 export type Visibility = (typeof VISIBILITY)[keyof typeof VISIBILITY];
 
+// ─── Seed Sync Action ─────────────────────────────────────────────────────────
+
+/**
+ * What the editor's render-time state sync should do on this render.
+ *
+ * - `reseed`: adopt the server's data wholesale (rows, name, visibility, and
+ *   the diff baseline).
+ * - `conflict`: refuse to adopt it. The server moved *and* the user has
+ *   unsaved work that a re-seed would silently destroy.
+ * - `none`: leave local state alone.
+ */
+export const SEED_SYNC_ACTION = {
+  NONE: 'none',
+  RESEED: 'reseed',
+  CONFLICT: 'conflict',
+} as const;
+
+export type SeedSyncAction = (typeof SEED_SYNC_ACTION)[keyof typeof SEED_SYNC_ACTION];
+
+// ─── Track Card Size ──────────────────────────────────────────────────────────
+
+export const TRACK_CARD_SIZE = {
+  SM: 'sm',
+  MD: 'md',
+} as const;
+
+export type TrackCardSize = (typeof TRACK_CARD_SIZE)[keyof typeof TRACK_CARD_SIZE];
+
 // ─── Builder Step ─────────────────────────────────────────────────────────────
 
 export const BUILDER_STEP = {

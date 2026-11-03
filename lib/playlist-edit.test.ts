@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { SEED_SYNC_ACTION, type SeedSyncAction } from './constants';
 import {
   diffPlaylist,
   NO_PENDING_CHANGES,
@@ -8,7 +9,6 @@ import {
   toSaveUris,
   type EditableRow,
   type PlaylistMeta,
-  type SeedSyncAction,
   type SeedSyncState,
 } from './playlist-edit';
 import type { ResolvedTrack } from './types';
@@ -242,40 +242,44 @@ describe('NO_PENDING_CHANGES', () => {
 describe('planSeedSync', () => {
   /** The full truth table, so no case is decided by reading the implementation. */
   const cases: [SeedSyncState, SeedSyncAction, string][] = [
-    [{ isStale: false, hasPendingChanges: false, hasConflict: false }, 'none', 'settled'],
+    [
+      { isStale: false, hasPendingChanges: false, hasConflict: false },
+      SEED_SYNC_ACTION.NONE,
+      'settled',
+    ],
     [
       { isStale: true, hasPendingChanges: false, hasConflict: false },
-      'reseed',
+      SEED_SYNC_ACTION.RESEED,
       'new server data, nothing to lose',
     ],
     [
       { isStale: true, hasPendingChanges: true, hasConflict: false },
-      'conflict',
+      SEED_SYNC_ACTION.CONFLICT,
       'new server data would overwrite unsaved work',
     ],
     [
       { isStale: false, hasPendingChanges: true, hasConflict: false },
-      'none',
+      SEED_SYNC_ACTION.NONE,
       'plain local editing',
     ],
     [
       { isStale: false, hasPendingChanges: false, hasConflict: true },
-      'reseed',
+      SEED_SYNC_ACTION.RESEED,
       'conflict recovered: edits undone by hand',
     ],
     [
       { isStale: false, hasPendingChanges: true, hasConflict: true },
-      'none',
+      SEED_SYNC_ACTION.NONE,
       'conflict stands while edits stand',
     ],
     [
       { isStale: true, hasPendingChanges: false, hasConflict: true },
-      'reseed',
+      SEED_SYNC_ACTION.RESEED,
       'server moved again after a recovered conflict',
     ],
     [
       { isStale: true, hasPendingChanges: true, hasConflict: true },
-      'conflict',
+      SEED_SYNC_ACTION.CONFLICT,
       'server moved again while the conflict stands',
     ],
   ];
@@ -286,7 +290,7 @@ describe('planSeedSync', () => {
 
   it('never re-seeds over unsaved work, whatever else is true', () => {
     for (const [state, action] of cases) {
-      if (state.hasPendingChanges) expect(action).not.toBe('reseed');
+      if (state.hasPendingChanges) expect(action).not.toBe(SEED_SYNC_ACTION.RESEED);
     }
   });
 });

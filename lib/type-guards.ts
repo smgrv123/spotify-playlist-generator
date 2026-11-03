@@ -1,4 +1,4 @@
-import { TRACK_STATUS } from './constants';
+import { TRACK_STATUS, VISIBILITY, type Visibility } from './constants';
 import { FailedTrack, ResolvedTrack, TrackItem } from './types';
 
 /**
@@ -12,6 +12,11 @@ export function isResolved(track: TrackItem): track is ResolvedTrack {
 
 export function isFailed(track: TrackItem): track is FailedTrack {
   return track.status === TRACK_STATUS.FAILED;
+}
+
+/** Narrows a raw string (e.g. a `RadioGroup` value) to the `Visibility` enum. */
+export function isVisibility(value: string): value is Visibility {
+  return Object.values<string>(VISIBILITY).includes(value);
 }
 
 /**

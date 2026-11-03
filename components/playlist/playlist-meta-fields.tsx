@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { VISIBILITY, type Visibility } from '@/lib/constants';
+import { isVisibility } from '@/lib/type-guards';
 import { cn } from '@/lib/utils';
 
 interface VisibilityOption {
@@ -80,7 +81,9 @@ export function PlaylistMetaFields({
         <Label className="block text-[12.5px] font-semibold text-foreground">Visibility</Label>
         <RadioGroup
           value={visibility}
-          onValueChange={(value) => onVisibilityChange(value as Visibility)}
+          onValueChange={(value) => {
+            if (isVisibility(value)) onVisibilityChange(value);
+          }}
           disabled={disabled}
           aria-label="Visibility"
           className="inline-flex w-full gap-[3px] rounded-[var(--radius-sm)] border bg-surface-2 p-1"

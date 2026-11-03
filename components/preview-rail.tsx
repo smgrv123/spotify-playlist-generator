@@ -3,6 +3,7 @@
 import { CoverCollage } from '@/components/cover-collage';
 import { TrackCard } from '@/components/track-card';
 import { Input } from '@/components/ui/input';
+import { TRACK_CARD_SIZE } from '@/lib/constants';
 import type { DraftResolvedTrack } from '@/lib/types';
 
 interface PreviewRailProps {
@@ -86,7 +87,12 @@ export function PreviewRail({ tracks, name, onNameChange }: PreviewRailProps) {
                 key={track.rowId}
                 className="flex items-center gap-3 rounded-[var(--radius-sm)] px-1.5 py-1.5 hover:bg-surface-2"
               >
-                <TrackCard size="sm" title={title} artist={artist} imageUrl={imageUrl} />
+                <TrackCard
+                  size={TRACK_CARD_SIZE.SM}
+                  title={title}
+                  artist={artist}
+                  imageUrl={imageUrl}
+                />
               </div>
             );
           })

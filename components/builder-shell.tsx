@@ -3,14 +3,13 @@
 import { arrayMove } from '@dnd-kit/sortable';
 import { useSyncExternalStore } from 'react';
 
-import { AddTrackSearch } from '@/components/add-track-search';
 import { PreviewRail } from '@/components/preview-rail';
+import { RefineStep } from '@/components/refine-step';
 import { CreatePlaylistForm } from '@/components/save/create-playlist-form';
 import { Stepper } from '@/components/stepper';
 import { TrackCard } from '@/components/track-card';
-import { TrackList } from '@/components/track-list';
 import { TrackPasteForm } from '@/components/track-paste-form';
-import { BUILDER_STEP, BUILDER_STEP_META, TRACK_STATUS, type Visibility } from '@/lib/constants';
+import { BUILDER_STEP, TRACK_STATUS, type Visibility } from '@/lib/constants';
 import * as draftStore from '@/lib/draft-store';
 import { isResolved } from '@/lib/type-guards';
 import type {
@@ -28,7 +27,7 @@ import type {
  * Owns the unified Draft state (tracks, name, visibility, step, maxReached)
  * and threads slices into the step cards. Only the active step is mounted at
  * a time, gated by the `Stepper`. Each step card (TrackPasteForm /
- * AddTrackSearch+TrackList / CreatePlaylistForm) owns its own internals.
+ * RefineStep / CreatePlaylistForm) owns its own internals.
  *
  * Layout: at the `2pane` breakpoint (941px) the workspace is a two-pane grid
  * (active step card left, `PreviewRail` right). Below that it collapses to a
@@ -124,7 +123,6 @@ export function BuilderShell() {
   const failedTracks = draft.tracks.filter(
     (track): track is DraftFailedTrack => track.status === TRACK_STATUS.FAILED
   );
-  const existingUris = new Set(resolvedTracks.map((track) => track.spotifyUri));
 
   return (
     <div className="mx-auto w-full max-w-[1100px] space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -161,59 +159,14 @@ export function BuilderShell() {
           )}
 
           {draft.step === BUILDER_STEP.REFINE && (
-            <section className="rounded-[var(--radius-lg)] border bg-surface p-6 shadow-[var(--shadow-card)] sm:p-8">
-              <p className="label-text text-[11px] font-semibold uppercase text-accent-strong">
-                {BUILDER_STEP_META[BUILDER_STEP.REFINE].stepLabel}
-              </p>
-              <h2 className="display-text mt-1.5 text-[clamp(22px,3vw,28px)] leading-tight text-foreground">
-                Review &amp; refine
-              </h2>
-              <p className="mt-2 text-[14.5px] leading-relaxed text-muted-foreground">
-                Add songs by search, drop anything that doesn&apos;t fit, and reorder until it
-                flows.
-              </p>
-
-              <div className="mt-6">
-                <AddTrackSearch onAdd={handleAddTrack} existingUris={existingUris} />
-              </div>
-
-              <div className="mt-6 flex items-center justify-between">
-                <span className="text-[12.5px] font-semibold text-foreground">Resolved tracks</span>
-                <span className="rounded-full border bg-surface-2 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-muted-foreground">
-                  {resolvedTracks.length}
-                </span>
-              </div>
-              <div className="mt-3">
-                <TrackList
-                  tracks={resolvedTracks}
-                  rowIds={resolvedTracks.map((track) => track.rowId)}
-                  onRemove={handleRemoveFromSubset(resolvedTracks)}
-                  onReorder={handleReorderResolved}
-                  emptyMessage="No tracks yet. Search above or go back and paste a list."
-                />
-              </div>
-
-              {failedTracks.length > 0 && (
-                <div className="mt-6" data-testid="refine-unresolved-section">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[12.5px] font-semibold text-foreground">Unresolved</span>
-                    <span className="rounded-full border bg-surface-2 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-muted-foreground">
-                      {failedTracks.length}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[12.5px] text-text-faint">
-                    These tracks could not be matched on Spotify.
-                  </p>
-                  <div className="mt-3">
-                    <TrackList
-                      tracks={failedTracks}
-                      rowIds={failedTracks.map((track) => track.rowId)}
-                      onRemove={handleRemoveFromSubset(failedTracks)}
-                    />
-                  </div>
-                </div>
-              )}
-            </section>
+            <RefineStep
+              resolvedTracks={resolvedTracks}
+              failedTracks={failedTracks}
+              onAddTrack={handleAddTrack}
+              onRemoveResolved={handleRemoveFromSubset(resolvedTracks)}
+              onRemoveFailed={handleRemoveFromSubset(failedTracks)}
+              onReorderResolved={handleReorderResolved}
+            />
           )}
 
           {draft.step === BUILDER_STEP.SAVE && (

@@ -53,7 +53,8 @@ export interface SpotifySnapshotResponse {
 // ─── Playlist Tracks ──────────────────────────────────────────────────────────
 
 export interface PlaylistItemContent {
-  type?: 'track' | 'episode' | string;
+  /** Open-ended Spotify vocabulary (`track`, `episode`, ...); only `track` is kept on read. */
+  type?: string;
   id: string;
   name: string;
   uri: string;

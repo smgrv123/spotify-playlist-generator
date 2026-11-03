@@ -13,6 +13,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { useSearchTracks, type SearchResultTrack } from '@/hooks/use-search-tracks';
+import { TRACK_CARD_SIZE } from '@/lib/constants';
 import type { ResolvedTrack } from '@/lib/types';
 
 interface AddTrackSearchProps {
@@ -120,7 +121,7 @@ export function AddTrackSearch({ onAdd, existingUris }: AddTrackSearchProps) {
                 className="cursor-pointer gap-3 rounded-[var(--radius-sm)] p-2.5 transition-colors data-selected:bg-surface-2 data-[disabled=true]:pointer-events-auto data-[disabled=true]:cursor-not-allowed"
               >
                 <TrackCard
-                  size="sm"
+                  size={TRACK_CARD_SIZE.SM}
                   title={track.name}
                   artist={track.artists.map((a) => a.name).join(', ')}
                   imageUrl={track.image || undefined}
