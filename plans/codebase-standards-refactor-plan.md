@@ -72,12 +72,12 @@ Update all API route files to import from shared type/constant modules. Clean up
 
 ### Acceptance criteria
 
-- [x] `lib/constants.ts` exists with all `as const` enum objects. — _Superseded in part: `SAVE_MODE` was removed by `plans/playlist-management-pages-plan.md` Phase 6 (update strategy lives in `UPDATE_MODE`); no auth-status string union exists to enumerate (session state is the typed `user` profile exposed by `useSession` per Phase 3)._
+- [x] `lib/constants.ts` exists with all `as const` enum objects. — _Superseded in part: `SAVE_MODE` was removed by `plans/playlist-management-pages-plan.md` Phase 6 (update strategy lives in `UPDATE_MODE`); no auth-status string union exists to enumerate: auth state is `SessionResponse` in `lib/types.ts` (`authenticated: boolean` plus `user: UserProfile | null`), which is not a string union._
 - [x] Zod schemas derive enums from `as const` objects; no inline string union arrays in schemas.
 - [x] `lib/spotify-types.ts` exists; no duplicate Spotify interface definitions remain across route files.
 - [x] `lib/type-guards.ts` exists with `isResolved`, `isFailed`, `getErrorMessage`.
 - [x] All API routes import from shared modules.
-- [x] Zero `as Record<string, unknown>` casts remain in `lib/api-response.ts`.
+- [x] Zero `as Record<string, unknown>` casts remain in `lib/api-response.ts`. — `return {} as T` in `lib/spotify-client.ts` (empty 2xx body) stays deliberately: the JSON boundary is untyped, so `T` is the caller's assertion.
 - [x] Gate passes: `pnpm lint && pnpm typecheck && pnpm build`.
 
 ---
@@ -96,7 +96,7 @@ Rewrite `playlist-builder.tsx` to use `useSession()` and `useLogout()` instead o
 
 ### Acceptance criteria
 
-- [x] `useSession` hook exists and returns typed auth state. — _Superseded in part: returns `{ user: UserProfile | null }` (typed via `SessionResponse`) rather than `{ isAuthenticated, isLoading }`; the `(app)` layout's server-side gate owns auth gating and `UserChip` renders nothing until the profile loads, so no consumer needs those flags (`plans/playlist-builder-redesign-prd.md:86`)._
+- [x] `useSession` hook exists and returns typed auth state. — _Superseded in part: returns `{ user }`, where `user` is `SessionResponse['user']` from `lib/types.ts`, rather than `{ isAuthenticated, isLoading }`. Nothing consumes those flags: `UserChip` is the only caller and reads `user`, and the `(app)` layout's server-side redirect owns auth gating. The PRD's proposed `useUser` hook (`plans/playlist-builder-redesign-prd.md:86`, "expose `user`") was not built; `useSession` exposes `user` directly._
 - [x] `useLogout` hook exists and invalidates session on success. — _Superseded in part: on success it also resets the builder draft and calls `queryClient.clear()` (drops the session and every other user-scoped cache, with no refetch) before routing to `/login`; an explicit sign-out must not leak the draft to the next account, unlike the 401 path which preserves it for restore. Restored after the redesign dropped it (`plans/playlist-builder-redesign-prd.md:31`, story 4: "can log out from there")._
 - [x] `playlist-builder.tsx` uses hooks; no manual `fetch` for session/logout. — _Superseded: `playlist-builder.tsx` was replaced by `components/builder-shell.tsx` + `components/top-bar.tsx` / `components/user-chip.tsx`; logout is the `UserChip` icon button calling `useLogout()`, and no component calls `fetch` for session/logout (`plans/playlist-builder-redesign-plan.md`)._
 - [ ] Auth flow is demoable: loading → unauthenticated → login → authenticated → logout. _(Manual verification pending.)_
@@ -196,11 +196,11 @@ Install shadcn `Checkbox`. Create `UpdatePlaylistForm` component with: playlist 
 ### Acceptance criteria
 
 - [x] `usePlaylists` and `usePlaylistTracks` hooks exist.
-- [x] shadcn `Checkbox` replaces all native `<input type="checkbox">`. — Zero native checkboxes remain. _Superseded in part: the checklist UI itself no longer exists (the detail editor removes rows via `TrackList`), so `components/ui/checkbox.tsx` has no consumer today (`plans/playlist-management-pages-plan.md`, Phase 4)._
+- [x] shadcn `Checkbox` replaces all native `<input type="checkbox">`. — Zero native checkboxes remain. _Superseded in part: the checklist UI was removed with `save-panel.tsx` (`plans/playlist-management-pages-plan.md`, Phase 6); the replacement editor was built on `TrackList` in Phase 4 of that plan. `components/ui/checkbox.tsx` had no consumer; the unused file has since been deleted._
 - [x] `UpdatePlaylistForm` is a self-contained component. — _Superseded: editing an existing playlist moved to the `/playlists/[id]` detail editor (`PlaylistDetail` + `usePlaylistEditor`); the builder is create-only (`plans/playlist-management-pages-plan.md`, Phases 4 and 6)._
 - [x] Track selection, dedup, and preview work correctly. — _Superseded: the detail editor edits one ordered row list directly (drag, remove, add via paste/search, diff in `UnsavedChangesBar`), and duplicate URIs are deliberately preserved, not deduped (`plans/playlist-management-pages-plan.md:190`)._
 - [x] `TrackCard` is reused for track rows in checkboxes. — _Superseded in part: no checkboxes (see above); the editor's rows render through `TrackList`, which renders `TrackCard`._
-- [x] Success/error via sonner + Alert pattern. — _Superseded: the detail editor surfaces errors as inline destructive `Alert`s with no toasts; success is the unsaved-changes bar clearing after the refetch (`plans/playlist-management-pages-plan.md:163`)._
+- [x] Success/error via sonner + Alert pattern. — _Superseded: the detail editor surfaces errors as inline destructive `Alert`s with no toasts; success is the unsaved-changes bar clearing at the save mutation's `onSuccess`, where the baseline advances, not on the refetch (`plans/playlist-management-pages-plan.md`, Phase 6, "Two consequences")._
 - [x] No `as` type casts in the component.
 - [x] Gate passes: `pnpm lint && pnpm typecheck && pnpm build`.
 
@@ -247,7 +247,7 @@ Run final grep verification checks to confirm zero violations remain.
 ### Acceptance criteria
 
 - [x] `save-panel.tsx` is under 100 lines — a thin orchestrator only. — _Superseded: `save-panel.tsx` was deleted and decomposed into `components/save/create-playlist-form.tsx` + `save-success-state.tsx`; Update/Delete moved to `/playlists/[id]` (`plans/playlist-management-pages-plan.md`, Phase 6)._
-- [x] `playlist-builder.tsx` is under 150 lines — orchestration only. — `playlist-builder.tsx` is now `components/builder-shell.tsx`: 135 lines of code (188 including its doc comments and blank lines) after the refine step's card moved to `components/refine-step.tsx`. The shell still owns all draft/track state and passes slices + callbacks down as props.
+- [x] `playlist-builder.tsx` is under 150 lines — orchestration only. — Met on code lines only: `playlist-builder.tsx` is now `components/builder-shell.tsx`, which is 171 lines total / 122 code lines (non-blank, non-comment), measured after the refine step's card moved to `components/refine-step.tsx`. The shell still owns all draft/track state and passes slices + callbacks down as props.
 - [x] Zero `useMemo` or `useCallback` in user code (shadcn internals excluded).
 - [x] Zero `console.log` / `console.error` / `console.warn` in component files. — The only client-side `console.error`s are in `hooks/use-logout.ts`, `hooks/use-search-tracks.ts` and `lib/query-client.ts` (the API-error pattern).
 - [x] Zero `window.confirm` calls.

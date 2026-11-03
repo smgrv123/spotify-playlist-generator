@@ -7,10 +7,11 @@ import { useLogout } from '@/hooks/use-logout';
 import { useSession } from '@/hooks/use-session';
 
 /**
- * Pill-shaped chip showing the authenticated Spotify user's avatar and
- * display name. Renders nothing when no profile is available (logged out,
- * `/v1/me` failure, or session still loading) — the top bar slot collapses
- * gracefully in that case.
+ * Top-bar profile chip: a pill showing the authenticated Spotify user's avatar
+ * and display name, plus a ghost "Log out" icon button (wired to `useLogout()`)
+ * next to it. Renders nothing when no profile is available (logged out,
+ * `/v1/me` failure, or session still loading), so the pill and the Log out
+ * button disappear together and the top bar slot collapses gracefully.
  *
  * Avatar uses `next/image`; when Spotify returns no image we render the
  * derived initials over a soft accent gradient as the visual fallback.

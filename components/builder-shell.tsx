@@ -9,17 +9,10 @@ import { CreatePlaylistForm } from '@/components/save/create-playlist-form';
 import { Stepper } from '@/components/stepper';
 import { TrackCard } from '@/components/track-card';
 import { TrackPasteForm } from '@/components/track-paste-form';
-import { BUILDER_STEP, TRACK_STATUS, type Visibility } from '@/lib/constants';
+import { BUILDER_STEP, type Visibility } from '@/lib/constants';
 import * as draftStore from '@/lib/draft-store';
-import { isResolved } from '@/lib/type-guards';
-import type {
-  BuilderStep,
-  DraftFailedTrack,
-  DraftResolvedTrack,
-  DraftTrack,
-  ResolvedTrack,
-  TrackItem,
-} from '@/lib/types';
+import { isFailed, isResolved } from '@/lib/type-guards';
+import type { BuilderStep, DraftTrack, ResolvedTrack, TrackItem } from '@/lib/types';
 
 /**
  * Top-level builder UI rendered on `/` for authenticated users.
@@ -85,9 +78,7 @@ export function BuilderShell() {
     draftStore.update((prev) => {
       const target = subset[subsetIndex];
       if (!target) return prev;
-      const originalIndex = prev.tracks.indexOf(target);
-      if (originalIndex === -1) return prev;
-      return { ...prev, tracks: prev.tracks.filter((_, i) => i !== originalIndex) };
+      return { ...prev, tracks: prev.tracks.filter((track) => track.rowId !== target.rowId) };
     });
   };
 
@@ -113,16 +104,8 @@ export function BuilderShell() {
     draftStore.update((prev) => ({ ...prev, visibility }));
   const handleBuildAnother = () => draftStore.reset();
 
-  // Not `isResolved`/`isFailed` from `lib/type-guards`: those narrow
-  // `TrackItem`, but draft tracks carry an extra `rowId` (see `DraftTrack` in
-  // `lib/types`) that a `TrackItem`-typed predicate can't preserve through
-  // `.filter()`. Narrowing on `status` directly keeps `rowId` on the result.
-  const resolvedTracks = draft.tracks.filter(
-    (track): track is DraftResolvedTrack => track.status === TRACK_STATUS.RESOLVED
-  );
-  const failedTracks = draft.tracks.filter(
-    (track): track is DraftFailedTrack => track.status === TRACK_STATUS.FAILED
-  );
+  const resolvedTracks = draft.tracks.filter(isResolved);
+  const failedTracks = draft.tracks.filter(isFailed);
 
   return (
     <div className="mx-auto w-full max-w-[1100px] space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -140,9 +123,9 @@ export function BuilderShell() {
                     className="mt-5 space-y-2"
                     data-testid="prepare-unresolved-inline"
                   >
-                    {failedTracks.map((track, index) => (
+                    {failedTracks.map((track) => (
                       <div
-                        key={`${track.query.title}-${track.query.artist}-${index}`}
+                        key={track.rowId}
                         className="flex items-center gap-3 rounded-[var(--radius-sm)] border border-destructive/40 bg-destructive/10 p-3"
                       >
                         <TrackCard

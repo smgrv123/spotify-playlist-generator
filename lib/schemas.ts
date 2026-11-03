@@ -2,7 +2,9 @@ import { z } from 'zod';
 import {
   BUILDER_STEP,
   FAILED_REASON,
+  MAX_PLAYLIST_URIS,
   SAVE_RESPONSE_MODE,
+  SPOTIFY_TRACK_URI_PATTERN,
   UPDATE_MODE,
   VISIBILITY,
   type FailedReason,
@@ -54,8 +56,8 @@ export const resolveResponseSchema = z.discriminatedUnion('status', [
 
 export const saveRequestSchema = z.object({
   playlistId: z.string().optional(),
-  playlistName: z.string(),
-  uris: z.array(z.string().regex(/^spotify:track:[A-Za-z0-9]{22}$/)).max(10000),
+  playlistName: z.string().optional(),
+  uris: z.array(z.string().regex(SPOTIFY_TRACK_URI_PATTERN)).max(MAX_PLAYLIST_URIS),
   mode: z.enum(Object.values(UPDATE_MODE) as [UpdateMode, ...UpdateMode[]]).optional(),
   isPublic: z.boolean().optional(),
 });
@@ -129,11 +131,9 @@ const builderStepSchema = z.union([
  * from `resolveResponseSchema` because that schema is the resolve API's
  * response contract and has no `rowId` concept.
  */
-const draftResolvedTrackSchema = resolvedTrackSchema.extend({ rowId: z.string() });
-const draftFailedTrackSchema = failedTrackSchema.extend({ rowId: z.string() });
 const draftTrackSchema = z.discriminatedUnion('status', [
-  draftResolvedTrackSchema,
-  draftFailedTrackSchema,
+  resolvedTrackSchema.extend({ rowId: z.string() }),
+  failedTrackSchema.extend({ rowId: z.string() }),
 ]);
 
 /**

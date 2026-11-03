@@ -1,5 +1,10 @@
 import { fail, normalizeError, ok } from '@/lib/api-response';
-import { SAVE_RESPONSE_MODE, UPDATE_MODE } from '@/lib/constants';
+import {
+  API_ERROR_CODE,
+  MAX_URIS_PER_REQUEST,
+  SAVE_RESPONSE_MODE,
+  UPDATE_MODE,
+} from '@/lib/constants';
 import { logger } from '@/lib/logger';
 import { saveRequestSchema } from '@/lib/schemas';
 import { spotifyClient } from '@/lib/spotify-client';
@@ -7,9 +12,6 @@ import { SpotifySnapshotResponse } from '@/lib/spotify-types';
 import { formatZodErrors } from '@/lib/utils';
 import crypto from 'crypto';
 import { NextRequest } from 'next/server';
-
-// Spotify natively enforces exactly 100 URIs per add-items request
-const MAX_URIS_PER_REQUEST = 100;
 
 export async function POST(request: NextRequest) {
   const reqId = crypto.randomUUID();
@@ -25,7 +27,7 @@ export async function POST(request: NextRequest) {
         reqId,
         error: parseError instanceof Error ? parseError.message : 'Unknown error',
       });
-      return fail('VALIDATION_ERROR', 'Invalid JSON body', 400);
+      return fail(API_ERROR_CODE.VALIDATION_ERROR, 'Invalid JSON body', 400);
     }
 
     const validationResult = saveRequestSchema.safeParse(rawBody);
@@ -36,7 +38,7 @@ export async function POST(request: NextRequest) {
         issues: validationResult.error.issues,
       });
       return fail(
-        'VALIDATION_ERROR',
+        API_ERROR_CODE.VALIDATION_ERROR,
         'Invalid save request',
         400,
         formatZodErrors(validationResult.error)
@@ -68,47 +70,69 @@ export async function POST(request: NextRequest) {
         // Appending nothing is a no-op request, not a valid save.
         if (uris.length === 0) {
           logger.warn('Append attempted with zero tracks', { reqId, targetPlaylistId });
-          return fail('VALIDATION_ERROR', 'Cannot append zero tracks to a playlist', 400);
+          return fail(
+            API_ERROR_CODE.VALIDATION_ERROR,
+            'Cannot append zero tracks to a playlist',
+            400
+          );
         }
         // For append, we just POST all chunks.
       } else {
         logger.warn('Invalid update mode specified', { reqId, mode });
-        return fail('VALIDATION_ERROR', 'Invalid update mode specified', 400);
+        return fail(API_ERROR_CODE.VALIDATION_ERROR, 'Invalid update mode specified', 400);
       }
 
-      const trimmedName = playlistName.trim();
-      if (!trimmedName) {
-        logger.warn('Playlist rename attempted with empty name', { reqId, targetPlaylistId });
-        return fail('VALIDATION_ERROR', 'Playlist name cannot be empty when updating', 400);
+      // Track-only saves must not call the details endpoint: it is owner-only.
+      if (playlistName !== undefined || isPublic !== undefined) {
+        const details: { name?: string; public?: boolean } = {};
+        if (playlistName !== undefined) {
+          const trimmedName = playlistName.trim();
+          if (!trimmedName) {
+            logger.warn('Playlist rename attempted with empty name', { reqId, targetPlaylistId });
+            return fail(
+              API_ERROR_CODE.VALIDATION_ERROR,
+              'Playlist name cannot be empty when updating',
+              400
+            );
+          }
+          details.name = trimmedName;
+        }
+        // `public` is spread in conditionally: callers that omit `isPublic` are
+        // renaming or re-ordering only, and must not have visibility flipped as a
+        // side effect of the update.
+        if (isPublic !== undefined) {
+          details.public = isPublic;
+        }
+        await spotifyClient.put(`/playlists/${encodeURIComponent(targetPlaylistId)}`, details);
       }
-      // `public` is spread in conditionally: callers that omit `isPublic` are
-      // renaming or re-ordering only, and must not have visibility flipped as a
-      // side effect of the update.
-      await spotifyClient.put(`/playlists/${encodeURIComponent(targetPlaylistId)}`, {
-        name: trimmedName,
-        ...(isPublic !== undefined && { public: isPublic }),
-      });
     } else {
       // Create new playlist
       if (uris.length === 0) {
         logger.warn('New playlist creation attempted with zero tracks', { reqId });
-        return fail('VALIDATION_ERROR', 'Cannot save a playlist with zero tracks', 400);
+        return fail(
+          API_ERROR_CODE.VALIDATION_ERROR,
+          'Cannot save a playlist with zero tracks',
+          400
+        );
       }
-      if (!playlistName.trim()) {
+      const trimmedName = playlistName?.trim();
+      if (!trimmedName) {
         logger.warn('New playlist creation attempted with empty name', { reqId });
         return fail(
-          'VALIDATION_ERROR',
+          API_ERROR_CODE.VALIDATION_ERROR,
           'Playlist name cannot be empty when creating a new playlist',
           400
         );
       }
       const created = await spotifyClient.post<{ id: string }>(`/me/playlists`, {
-        name: playlistName.trim(),
+        name: trimmedName,
         public: isPublic ?? false,
       });
       targetPlaylistId = created.id;
       logger.info('New playlist created', { reqId, targetPlaylistId });
     }
+
+    const encodedPlaylistId = encodeURIComponent(targetPlaylistId);
 
     // Now, add tracks to the target playlist
     if (isUpdate && mode === UPDATE_MODE.REPLACE) {
@@ -140,7 +164,7 @@ export async function POST(request: NextRequest) {
         chunkSize: initialChunk.length,
       });
       const replaceResponse = await spotifyClient.put<SpotifySnapshotResponse>(
-        `/playlists/${encodeURIComponent(targetPlaylistId)}/items`,
+        `/playlists/${encodedPlaylistId}/items`,
         { uris: initialChunk }
       );
       finalSnapshotId = replaceResponse.snapshot_id;
@@ -154,7 +178,7 @@ export async function POST(request: NextRequest) {
           chunkSize: chunk.length,
         });
         const addRes = await spotifyClient.post<SpotifySnapshotResponse>(
-          `/playlists/${encodeURIComponent(targetPlaylistId)}/items`,
+          `/playlists/${encodedPlaylistId}/items`,
           { uris: chunk }
         );
         finalSnapshotId = addRes.snapshot_id;
@@ -169,7 +193,7 @@ export async function POST(request: NextRequest) {
           chunkSize: chunk.length,
         });
         const addRes = await spotifyClient.post<SpotifySnapshotResponse>(
-          `/playlists/${encodeURIComponent(targetPlaylistId)}/items`,
+          `/playlists/${encodedPlaylistId}/items`,
           { uris: chunk }
         );
         finalSnapshotId = addRes.snapshot_id;

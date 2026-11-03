@@ -26,6 +26,8 @@ interface PlaylistTrackEditorProps {
   onAddTracks: (tracks: ResolvedTrack[]) => void;
   /** Freezes drag, remove and adding while a save is in flight. */
   isSaving: boolean;
+  /** False for users who are neither owner nor collaborator: the list is view-only. */
+  canEdit: boolean;
 }
 
 /**
@@ -45,12 +47,14 @@ export function PlaylistTrackEditor({
   onRemove,
   onAddTracks,
   isSaving,
+  canEdit,
 }: PlaylistTrackEditorProps) {
   // Built from the *local* rows so the search's duplicate check accounts for
   // additions made in this session that Spotify has not seen yet. Not memoized
   // — React Compiler owns memoization here, and nothing downstream compares
   // this set by reference.
   const existingUris = new Set(rows.map((row) => row.spotifyUri));
+  const isLocked = isSaving || !canEdit;
 
   return (
     <section className="rounded-[var(--radius-lg)] border bg-surface p-6 shadow-card sm:p-8">
@@ -60,9 +64,18 @@ export function PlaylistTrackEditor({
           {rows.length}
         </span>
       </div>
-      <p className="mt-1 text-[12.5px] text-text-faint">
-        Drag to reorder or remove a track. Nothing is written to Spotify until you save.
-      </p>
+      {canEdit ? (
+        <p className="mt-1 text-[12.5px] text-text-faint">
+          Drag to reorder or remove a track. Nothing is written to Spotify until you save.
+        </p>
+      ) : (
+        <Alert variant="default" className="mt-5">
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            You can view this playlist, but only its owner and collaborators can edit it.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Standing, not dismissible: it stays true for as long as the playlist
           holds these items, and it is the one thing a save silently changes
@@ -80,7 +93,7 @@ export function PlaylistTrackEditor({
       )}
 
       {isLoading ? null : (
-        <AddTracksPanel existingUris={existingUris} onAddTracks={onAddTracks} disabled={isSaving} />
+        <AddTracksPanel existingUris={existingUris} onAddTracks={onAddTracks} disabled={isLocked} />
       )}
 
       {error ? (
@@ -102,7 +115,7 @@ export function PlaylistTrackEditor({
             rowIds={rows.map((row) => row.rowId)}
             onReorder={onReorder}
             onRemove={onRemove}
-            readOnly={isSaving}
+            readOnly={isLocked}
             heightClassName="h-[min(62vh,620px)]"
             emptyMessage="This playlist has no tracks."
           />

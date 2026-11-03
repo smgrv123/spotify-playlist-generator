@@ -57,7 +57,7 @@ tracks route so the UI can warn about podcast/local items that a full rewrite wo
 
 ### Acceptance criteria
 
-- [x] `GET /api/spotify/playlist?playlistId=X` returns `{id, name, public, description, imageUrl, trackCount, ownerId, ownerName, isOwner, collaborative, snapshotId}`.
+- [x] `GET /api/spotify/playlist?playlistId=X` returns `{id, name, public, description, imageUrl, trackCount, ownerId, ownerName, isOwner, collaborative, snapshotId}`. — _Correction (later): `description` and `snapshotId` were removed as unused in f12cd03. `playlistDetailSchema` in `lib/schemas.ts` and `PLAYLIST_FIELDS` in `app/api/spotify/playlist/route.ts` now return `{id, name, public, imageUrl, trackCount, ownerId, ownerName, isOwner, collaborative}`._
 - [x] Missing `playlistId` returns a 400 `VALIDATION_ERROR` matching the tracks route's shape.
 - [x] The route resolves a playlist that sits past offset 50 in the user's library — it fetches `/playlists/{id}` directly rather than scanning the paged list.
 - [x] An update with `uris: []` and `mode: 'replace'` no longer 400s; the guard now lives in the create and `append` branches only.
@@ -210,7 +210,7 @@ mitigations.
 - [x] Step 3 renders name + visibility + Create only — no mode grid.
 - [x] The prepare-step CTA links to `/playlists`.
 - [x] `SAVE_MODE`, `SaveMode`, `Draft.mode`, and `Draft.target` are gone — grep confirms zero live references.
-- [x] `DRAFT_STORAGE_KEY` is bumped to `-v2`; a stale v1 draft returns `null` from `loadDraft()` without throwing (verified empirically).
+- [x] `DRAFT_STORAGE_KEY` is bumped to `-v2`; a stale v1 draft returns `null` from `loadDraft()` without throwing (verified empirically). — _Correction (later): the key is now `spotify-playlist-builder-draft-v3`. It was bumped again in d6d98fd, when draft tracks gained a client-minted `rowId`._
 - [x] `skippedCount > 0` renders a standing warning that podcast/local items will be dropped on save.
 - [x] The chunked-write failure mode (truncation, no 429 backoff) is documented in the save path.
 - [x] The builder still creates a playlist end-to-end.
@@ -219,7 +219,7 @@ mitigations.
 
 **Superseded criterion.** The plan called for "a `snapshotId` that moved between load and save blocks
 the write". That was not implemented as written, because a stronger guard replaced it. `snapshotId`
-exists on `playlistDetailSchema` but is never compared.
+exists on `playlistDetailSchema` but is never compared. — _Correction (later): this is false. f12cd03 removed `snapshotId` from the detail schema. It remains only as an optional field on `saveResponseSchema` in `lib/schemas.ts`._
 
 The reason: the original design had a worse bug than the one the snapshot guard was meant to catch.
 The seed included `orderKey(serverTracks)`, so when the playlist changed on Spotify's side while the

@@ -26,6 +26,14 @@ interface EditorBaseline {
   isPublic: boolean;
 }
 
+function seedKey(
+  tracks: { spotifyUri: string }[],
+  name: string | undefined,
+  isPublic: boolean | undefined
+): string {
+  return `${orderKey(tracks)}::${name}::${isPublic}`;
+}
+
 /**
  * The deferred-edit state machine behind `/playlists/[id]`.
  *
@@ -86,7 +94,7 @@ export function usePlaylistEditor(
   // rather than in a `useEffect` avoids an extra commit + render pass. It
   // converges because the seed cannot move as a result of the setters it calls.
   // `planSeedSync` holds the decision itself, unit-tested as a truth table.
-  const seed = `${orderKey(serverTracks)}::${detail?.name}::${detail?.public}`;
+  const seed = seedKey(serverTracks, detail?.name, detail?.public);
   const [syncedSeed, setSyncedSeed] = useState<string | null>(null);
 
   const seedFrom = (source: PlaylistDetail, tracks: ResolvedTrack[]) => {
@@ -165,10 +173,10 @@ export function usePlaylistEditor(
     savePlaylist(
       {
         playlistId,
-        playlistName: trimmedName,
+        playlistName: diff.renamed ? trimmedName : undefined,
         uris: toSaveUris(rows),
         mode: UPDATE_MODE.REPLACE,
-        isPublic,
+        isPublic: diff.visibilityChanged ? isPublic : undefined,
       },
       {
         // What was just written *is* the new last-saved truth, so the baseline
@@ -190,7 +198,7 @@ export function usePlaylistEditor(
         // different seed and is handled as ordinary unsaved local state.
         onSuccess: () => {
           setBaseline({ tracks: rows, name: trimmedName, isPublic });
-          setSyncedSeed(`${orderKey(rows)}::${trimmedName}::${isPublic}`);
+          setSyncedSeed(seedKey(rows, trimmedName, isPublic));
         },
       }
     );

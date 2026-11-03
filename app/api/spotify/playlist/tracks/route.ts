@@ -1,5 +1,5 @@
 import { fail, normalizeError, ok } from '@/lib/api-response';
-import { TRACK_STATUS } from '@/lib/constants';
+import { API_ERROR_CODE, TRACK_STATUS } from '@/lib/constants';
 import { logger } from '@/lib/logger';
 import { SpotifyPlaylistTracksResponse } from '@/lib/spotify-types';
 import { spotifyClient } from '@/lib/spotify-client';
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   try {
     const playlistId = request.nextUrl.searchParams.get('playlistId');
     if (!playlistId) {
-      return fail('VALIDATION_ERROR', 'playlistId is required', 400);
+      return fail(API_ERROR_CODE.VALIDATION_ERROR, 'playlistId is required', 400);
     }
 
     const tracks: ResolvedTrack[] = [];
@@ -30,7 +30,13 @@ export async function GET(request: NextRequest) {
       items.forEach((item) => {
         const content = item.item ?? item.track;
         // Podcast episodes, local files and unavailable items all land here.
-        if (!content || content.type !== 'track' || !content.artists) {
+        if (
+          !content ||
+          content.type !== 'track' ||
+          !content.artists ||
+          item.is_local ||
+          content.is_local
+        ) {
           skippedCount += 1;
           return;
         }

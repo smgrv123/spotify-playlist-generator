@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import * as schemas from './schemas';
+import type { TRACK_STATUS } from './constants';
 export type { BuilderStep } from './constants';
 
 export type ApiError = z.infer<typeof schemas.apiErrorSchema>;
@@ -65,9 +66,9 @@ export type Draft = z.infer<typeof schemas.draftSchema>;
  * Draft track variants after `draftSchema` attaches a client-minted `rowId`
  * (see `components/builder-shell.tsx`). Pasting the same song twice produces
  * two entries sharing a `spotifyUri` but with distinct `rowId`s — that's the
- * identity `TrackList`'s `rowIds` prop and `PreviewRail`/`CoverCollage`'s row
- * keys use instead, so duplicates don't collide on URI.
+ * identity `TrackList`'s `rowIds` prop and `PreviewRail`'s row keys use instead,
+ * so duplicates don't collide on URI.
  */
 export type DraftTrack = Draft['tracks'][number];
-export type DraftResolvedTrack = Extract<DraftTrack, { status: 'resolved' }>;
-export type DraftFailedTrack = Extract<DraftTrack, { status: 'failed' }>;
+export type DraftResolvedTrack = Extract<DraftTrack, { status: typeof TRACK_STATUS.RESOLVED }>;
+export type DraftFailedTrack = Extract<DraftTrack, { status: typeof TRACK_STATUS.FAILED }>;

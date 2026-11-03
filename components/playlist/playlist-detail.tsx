@@ -100,6 +100,7 @@ export function PlaylistDetail({ playlistId }: { playlistId: string }) {
         onRemove={editor.remove}
         onAddTracks={editor.addTracks}
         isSaving={editor.isSaving}
+        canEdit={detail.isOwner || detail.collaborative}
       />
 
       {editor.diff.total > 0 && (

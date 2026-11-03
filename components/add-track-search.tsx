@@ -4,7 +4,7 @@ import { Loader2, Plus, Search } from 'lucide-react';
 import { useState } from 'react';
 
 import { TrackCard } from '@/components/track-card';
-import { Button } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import {
   Command,
   CommandEmpty,
@@ -13,8 +13,9 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { useSearchTracks, type SearchResultTrack } from '@/hooks/use-search-tracks';
-import { TRACK_CARD_SIZE } from '@/lib/constants';
+import { TRACK_CARD_SIZE, TRACK_STATUS } from '@/lib/constants';
 import type { ResolvedTrack } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 interface AddTrackSearchProps {
   onAdd: (track: ResolvedTrack) => void;
@@ -42,7 +43,7 @@ export function AddTrackSearch({ onAdd, existingUris }: AddTrackSearchProps) {
     if (existingUris.has(track.uri)) return;
 
     const newTrack: ResolvedTrack = {
-      status: 'resolved',
+      status: TRACK_STATUS.RESOLVED,
       spotifyUri: track.uri,
       spotifyTrackId: track.id,
       durationMs: track.duration ?? 0,
@@ -65,7 +66,7 @@ export function AddTrackSearch({ onAdd, existingUris }: AddTrackSearchProps) {
   return (
     <Command
       shouldFilter={false}
-      className="relative size-auto w-full overflow-visible rounded-none! bg-transparent p-0"
+      className="relative w-full"
       onKeyDown={(event) => {
         if (event.key === 'Escape') setOpen(false);
         if (event.key === 'ArrowDown') setOpen(true);
@@ -88,6 +89,9 @@ export function AddTrackSearch({ onAdd, existingUris }: AddTrackSearchProps) {
           }}
           onFocus={() => {
             if (trimmedQuery) setOpen(true);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Home' || event.key === 'End') event.stopPropagation();
           }}
           className="h-11 min-w-0 rounded-[var(--radius-sm)] border border-input bg-surface-inset py-1 pr-10 pl-10 text-[14.5px] text-foreground transition placeholder:text-text-faint focus-visible:border-primary focus-visible:bg-surface focus-visible:ring-[3px] focus-visible:ring-ring md:text-sm dark:bg-surface-inset"
         />
@@ -118,7 +122,7 @@ export function AddTrackSearch({ onAdd, existingUris }: AddTrackSearchProps) {
                 value={track.uri}
                 disabled={isDuplicate}
                 onSelect={() => handleSelect(track)}
-                className="cursor-pointer gap-3 rounded-[var(--radius-sm)] p-2.5 transition-colors data-selected:bg-surface-2 data-[disabled=true]:pointer-events-auto data-[disabled=true]:cursor-not-allowed"
+                className="cursor-pointer gap-3 rounded-[var(--radius-sm)] p-2.5 transition-colors data-[selected=true]:bg-surface-2 data-[disabled=true]:pointer-events-auto data-[disabled=true]:cursor-not-allowed"
               >
                 <TrackCard
                   size={TRACK_CARD_SIZE.SM}
@@ -130,12 +134,12 @@ export function AddTrackSearch({ onAdd, existingUris }: AddTrackSearchProps) {
                   titleClassName="text-[14px] font-medium"
                   artistClassName="text-[12.5px] text-muted-foreground"
                 />
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  tabIndex={-1}
-                  disabled={isDuplicate}
-                  className="h-auto flex-shrink-0 rounded-[var(--radius-sm)] px-3.5 py-1.5 text-[13px] font-semibold"
+                <span
+                  aria-hidden
+                  className={cn(
+                    buttonVariants({ variant: 'ghost', size: 'sm' }),
+                    'h-auto flex-shrink-0 rounded-[var(--radius-sm)] px-3.5 py-1.5 text-[13px] font-semibold'
+                  )}
                 >
                   {isDuplicate ? (
                     'Added'
@@ -145,7 +149,7 @@ export function AddTrackSearch({ onAdd, existingUris }: AddTrackSearchProps) {
                       Add
                     </>
                   )}
-                </Button>
+                </span>
               </CommandItem>
             );
           })}

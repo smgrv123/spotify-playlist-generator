@@ -12,7 +12,7 @@ interface PreviewRailProps {
   onNameChange: (name: string) => void;
 }
 
-function totalDurationMs(tracks: DraftResolvedTrack[]): number {
+function totalDurationMs(tracks: { durationMs: number }[]): number {
   return tracks.reduce<number>((acc, track) => acc + track.durationMs, 0);
 }
 

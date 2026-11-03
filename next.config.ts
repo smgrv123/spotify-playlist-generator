@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: 'https', hostname: 'i.scdn.co', pathname: '/image/**' },
       // Spotify CDN hosts that serve user profile images.
-      { protocol: 'https', hostname: 'mosaic.scdn.co', pathname: '/image/**' },
+      { protocol: 'https', hostname: 'mosaic.scdn.co', pathname: '/**' },
       { protocol: 'https', hostname: 'image-cdn-ak.spotifycdn.com', pathname: '/image/**' },
       { protocol: 'https', hostname: 'image-cdn-fa.spotifycdn.com', pathname: '/image/**' },
       // Profile images mirrored from a linked Facebook account.

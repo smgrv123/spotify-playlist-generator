@@ -64,12 +64,21 @@ export interface PlaylistItemContent {
     name: string;
     images?: Array<{ url: string }>;
   };
+  is_local?: boolean;
 }
 
 export interface SpotifyPlaylistTracksResponse {
   items?: Array<{
     track?: PlaylistItemContent | null;
     item?: PlaylistItemContent | null;
+    is_local?: boolean;
   }>;
   next: string | null;
+}
+
+// ─── Current User ─────────────────────────────────────────────────────────────
+
+/** Subset of Spotify's `/me` response used for ownership checks. */
+export interface SpotifyMeIdResponse {
+  id: string;
 }

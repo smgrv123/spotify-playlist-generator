@@ -104,8 +104,7 @@ describe('draft-storage (browser)', () => {
     expect(new Set(rowIds).size).toBe(rowIds.length);
   });
 
-  it('rejects a draft persisted under the pre-rowId key/shape after the storage-key version bump', () => {
-    const OLD_DRAFT_STORAGE_KEY = 'spotify-playlist-builder-draft-v2';
+  it('rejects a draft whose tracks lack a rowId (the pre-rowId shape) under the current key', () => {
     const oldShapedDraft = {
       ...SAMPLE_DRAFT,
       tracks: SAMPLE_DRAFT.tracks.map((track) => {
@@ -114,7 +113,7 @@ describe('draft-storage (browser)', () => {
         return clone;
       }),
     };
-    storage.setItem(OLD_DRAFT_STORAGE_KEY, JSON.stringify(oldShapedDraft));
+    storage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(oldShapedDraft));
     expect(loadDraft()).toBeNull();
   });
 });

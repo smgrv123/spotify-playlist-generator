@@ -1,5 +1,5 @@
 import { fail, normalizeError, ok } from '@/lib/api-response';
-import { FAILED_REASON, TRACK_STATUS } from '@/lib/constants';
+import { API_ERROR_CODE, FAILED_REASON, TRACK_STATUS } from '@/lib/constants';
 import { logger } from '@/lib/logger';
 import { resolveRequestSchema } from '@/lib/schemas';
 import { SpotifySearchResponse } from '@/lib/spotify-types';
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
         issues: validationResult.error.issues,
       });
       return fail(
-        'VALIDATION_ERROR',
+        API_ERROR_CODE.VALIDATION_ERROR,
         'Invalid resolve request',
         400,
         formatZodErrors(validationResult.error)
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof SyntaxError) {
       logger.warn('Resolve request failed JSON parse', { reqId });
-      return fail('VALIDATION_ERROR', 'Invalid JSON body', 400);
+      return fail(API_ERROR_CODE.VALIDATION_ERROR, 'Invalid JSON body', 400);
     }
     logger.error('Resolve pipeline failed entirely', error, { reqId });
     return normalizeError(error);

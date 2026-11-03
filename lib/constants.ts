@@ -134,7 +134,20 @@ export const API_ERROR_CODE = {
   UNKNOWN_ERROR: 'UNKNOWN_ERROR',
   RATE_LIMITED: 'RATE_LIMITED',
   UNAUTHORIZED: 'UNAUTHORIZED',
+  FORBIDDEN: 'FORBIDDEN',
+  OAUTH_ERROR: 'OAUTH_ERROR',
+  INVALID_CALLBACK: 'INVALID_CALLBACK',
+  INVALID_STATE: 'INVALID_STATE',
 } as const;
+
+export type ApiErrorCode = (typeof API_ERROR_CODE)[keyof typeof API_ERROR_CODE];
+
+// ─── Save Request Limits ──────────────────────────────────────────────────────
+
+export const SPOTIFY_TRACK_URI_PATTERN = /^spotify:track:[A-Za-z0-9]{22}$/;
+export const MAX_PLAYLIST_URIS = 10000;
+// Spotify natively enforces exactly 100 URIs per add-items request
+export const MAX_URIS_PER_REQUEST = 100;
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
 // Centralized so key shapes are never duplicated across hooks.

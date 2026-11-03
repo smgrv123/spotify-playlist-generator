@@ -1,4 +1,5 @@
 import { fail, normalizeError, ok } from '@/lib/api-response';
+import { API_ERROR_CODE } from '@/lib/constants';
 import { SpotifySearchResponse } from '@/lib/spotify-types';
 import { spotifyClient } from '@/lib/spotify-client';
 import { NextRequest } from 'next/server';
@@ -7,7 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     const q = request.nextUrl.searchParams.get('q')?.trim();
     if (!q || q.length > 100) {
-      return fail('VALIDATION_ERROR', 'Invalid search query', 400);
+      return fail(API_ERROR_CODE.VALIDATION_ERROR, 'Invalid search query', 400);
     }
 
     const data = await spotifyClient.get<SpotifySearchResponse>(

@@ -1,6 +1,7 @@
 import { fail, normalizeError, ok } from '@/lib/api-response';
+import { API_ERROR_CODE } from '@/lib/constants';
 import { logger } from '@/lib/logger';
-import { SpotifyPlaylistItem } from '@/lib/spotify-types';
+import { SpotifyMeIdResponse, SpotifyPlaylistItem } from '@/lib/spotify-types';
 import { toPlaylistSummary } from '@/lib/spotify-mappers';
 import { spotifyClient } from '@/lib/spotify-client';
 import { PlaylistDetail } from '@/lib/types';
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
   try {
     const playlistId = request.nextUrl.searchParams.get('playlistId');
     if (!playlistId) {
-      return fail('VALIDATION_ERROR', 'playlistId is required', 400);
+      return fail(API_ERROR_CODE.VALIDATION_ERROR, 'playlistId is required', 400);
     }
 
     // `/me` is needed only to decide ownership, so it runs alongside the
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
       spotifyClient.get<SpotifyPlaylistItem>(
         `/playlists/${encodeURIComponent(playlistId)}?fields=${PLAYLIST_FIELDS}`
       ),
-      spotifyClient.get<{ id: string }>('/me'),
+      spotifyClient.get<SpotifyMeIdResponse>('/me'),
     ]);
 
     const ownerId = playlist.owner?.id ?? null;

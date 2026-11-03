@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
+import { API_ERROR_CODE, ApiErrorCode } from './constants';
 import { logger } from './logger';
 import { ApiError } from './types';
 import { isApiErrorShape } from './type-guards';
@@ -10,7 +11,7 @@ export function ok<T>(data: T, status: number = 200): NextResponse<T> {
 }
 
 export function fail(
-  code: string,
+  code: ApiErrorCode,
   message: string,
   status: number = 500,
   details?: unknown
@@ -26,16 +27,32 @@ export function fail(
 
 export function normalizeError(error: unknown): NextResponse<ApiError> {
   if (error instanceof ZodError) {
-    return fail('VALIDATION_ERROR', 'Invalid request payload', 400, formatZodErrors(error));
+    return fail(
+      API_ERROR_CODE.VALIDATION_ERROR,
+      'Invalid request payload',
+      400,
+      formatZodErrors(error)
+    );
   }
 
   if (isApiErrorShape(error)) {
     const statusValue = 'status' in error && typeof error.status === 'number' ? error.status : 500;
-    return fail(error.code, error.message, statusValue, error.details);
+    return NextResponse.json(
+      {
+        code: error.code,
+        message: error.message,
+        ...(error.details !== undefined && { details: error.details }),
+      },
+      { status: statusValue }
+    );
   }
 
   logger.error('Unhandled error caught in normalizeError', error);
-  return fail('INTERNAL_SERVER_ERROR', 'An unexpected internal server error occurred.', 500);
+  return fail(
+    API_ERROR_CODE.INTERNAL_SERVER_ERROR,
+    'An unexpected internal server error occurred.',
+    500
+  );
 }
 
 export function parseExternalError(error: unknown, fallbackMessage: string): ApiError {
@@ -56,7 +73,7 @@ export function parseExternalError(error: unknown, fallbackMessage: string): Api
   }
 
   return {
-    code: 'EXTERNAL_SERVICE_ERROR',
+    code: API_ERROR_CODE.EXTERNAL_SERVICE_ERROR,
     message: fallbackMessage,
     details: parsedDetails,
   };

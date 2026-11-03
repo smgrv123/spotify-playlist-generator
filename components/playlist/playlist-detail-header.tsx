@@ -61,9 +61,7 @@ export function PlaylistDetailHeader({
   // a cleared field falls back to the saved name rather than rendering blank.
   const headingName = name.trim() || detail.name;
   const ownerLabel = detail.ownerName ?? detail.ownerId;
-  // Owners and collaborators can rename/change visibility/save; only the
-  // owner can delete.
-  const canEdit = detail.isOwner || detail.collaborative;
+  // Only the owner can rename, change visibility or delete; collaborators edit tracks only.
 
   return (
     <section className="rounded-[var(--radius-lg)] border bg-surface p-6 shadow-card sm:p-8">
@@ -113,12 +111,14 @@ export function PlaylistDetailHeader({
             onNameChange={onNameChange}
             visibility={isPublic ? VISIBILITY.PUBLIC : VISIBILITY.PRIVATE}
             onVisibilityChange={(visibility) => onIsPublicChange(visibility === VISIBILITY.PUBLIC)}
-            disabled={isSaving || !canEdit}
+            disabled={isSaving || !detail.isOwner}
             idPrefix="playlist-detail"
             nameHint={
-              name.trim().length === 0
-                ? "A playlist can't be saved without a name."
-                : 'Renames apply when you save.'
+              !detail.isOwner
+                ? 'Only the playlist owner can rename this playlist or change its visibility.'
+                : name.trim().length === 0
+                  ? "A playlist can't be saved without a name."
+                  : 'Renames apply when you save.'
             }
           />
         </div>

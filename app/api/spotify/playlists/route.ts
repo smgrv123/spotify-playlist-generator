@@ -1,6 +1,10 @@
 import { normalizeError, ok } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
-import { SpotifyPlaylistsResponse, SpotifyPlaylistItem } from '@/lib/spotify-types';
+import {
+  SpotifyMeIdResponse,
+  SpotifyPlaylistsResponse,
+  SpotifyPlaylistItem,
+} from '@/lib/spotify-types';
 import { toPlaylistSummary } from '@/lib/spotify-mappers';
 import { spotifyClient } from '@/lib/spotify-client';
 import crypto from 'crypto';
@@ -9,17 +13,24 @@ export async function GET() {
   const reqId = crypto.randomUUID();
 
   try {
-    const items: SpotifyPlaylistItem[] = [];
-    let nextUrl: string | null = '/me/playlists?limit=50';
+    const fetchAllPlaylistItems = async () => {
+      const items: SpotifyPlaylistItem[] = [];
+      let nextUrl: string | null = '/me/playlists?limit=50';
 
-    while (nextUrl) {
-      const data: SpotifyPlaylistsResponse =
-        await spotifyClient.get<SpotifyPlaylistsResponse>(nextUrl);
-      items.push(...(data.items || []));
-      nextUrl = data.next;
-    }
+      while (nextUrl) {
+        const data: SpotifyPlaylistsResponse =
+          await spotifyClient.get<SpotifyPlaylistsResponse>(nextUrl);
+        items.push(...(data.items || []));
+        nextUrl = data.next;
+      }
 
-    const profile = await spotifyClient.get<{ id: string }>('/me');
+      return items;
+    };
+
+    const [items, profile] = await Promise.all([
+      fetchAllPlaylistItems(),
+      spotifyClient.get<SpotifyMeIdResponse>('/me'),
+    ]);
     const editableItems = items.filter(
       (playlist) => playlist.owner?.id === profile.id || playlist.collaborative
     );

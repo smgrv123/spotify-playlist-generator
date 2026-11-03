@@ -1,16 +1,20 @@
 import { TRACK_STATUS, VISIBILITY, type Visibility } from './constants';
-import { FailedTrack, ResolvedTrack, TrackItem } from './types';
+import { TrackItem } from './types';
 
 /**
  * Type-narrowing guards for track variants.
  * Use these instead of `as` casts when filtering mixed track arrays.
  */
 
-export function isResolved(track: TrackItem): track is ResolvedTrack {
+export function isResolved<T extends TrackItem>(
+  track: T
+): track is Extract<T, { status: typeof TRACK_STATUS.RESOLVED }> {
   return track.status === TRACK_STATUS.RESOLVED;
 }
 
-export function isFailed(track: TrackItem): track is FailedTrack {
+export function isFailed<T extends TrackItem>(
+  track: T
+): track is Extract<T, { status: typeof TRACK_STATUS.FAILED }> {
   return track.status === TRACK_STATUS.FAILED;
 }
 

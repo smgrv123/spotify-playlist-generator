@@ -98,7 +98,7 @@ Concretely:
 - **New presentational modules:** `BuilderShell`, `TopBar`, `Stepper`, `PreviewRail`, `CoverCollage`, `StepPrepare`, `StepRefine`, `StepSave`, `StepSuccess`, `LoginScreen`.
 - **Cover collage module:** Renders up to four quadrants. For each quadrant: render `next/image` of `track.displayData.imageUrl` when present, else a styled div with `background: coverGradient(track.title + track.artist)`. Quadrants beyond the available track count render as `--surface-2`. Used in both the rail and the success state.
 - **Cover-art gradient module:** New `lib/cover-art.ts` exposes `coverGradient(seed: string): string`. Pure function returning a CSS gradient string derived from a stable hash of the seed.
-- **Spotify profile module:** New `lib/spotify-me.ts` exposes `fetchProfile(accessToken: string): Promise<UserProfile | null>`. Server-only. Wraps the `/v1/me` call, extracts displayName + the first avatar URL, computes two-letter initials.
+- **Spotify profile module:** New `lib/spotify-me.ts` exposes `fetchProfile(accessToken: string): Promise<UserProfile | null>`. Server-only. Wraps the `/v1/me` call, extracts displayName + the first avatar URL, computes two-letter initials. — _Correction (later): `fetchProfile` is now `fetchSpotifyProfile(): Promise<UserProfile | null>` with no token argument. It calls `spotifyClient.get('/me')`, which reads and refreshes the access token from cookies itself. See `lib/spotify-me.ts`._
 
 ### Drag-to-reorder
 
@@ -147,7 +147,7 @@ Modules to test:
 
 1. **`lib/draft-storage.ts`** — `loadDraft`, `saveDraft`, `clearDraft`. Cases: round-trip save/load, missing key returns `null`, malformed JSON returns `null` (does not throw), `clearDraft` removes the key, behavior under absent `window.sessionStorage` (SSR/Node) returns `null` and is a no-op for writes.
 2. **`lib/cover-art.ts`** — `coverGradient(seed)`. Cases: same seed always produces the same gradient string (determinism), distinct seeds produce distinct hues, output is a valid CSS `linear-gradient(...)` string, empty-string seed produces a stable default.
-3. **`lib/spotify-me.ts`** — `fetchProfile(token)`. Cases: 200 response with display name + avatar returns the full profile, 200 response with no `images` array returns profile with `avatarUrl: null` and initials derived from `display_name`, 401 returns `null`, non-2xx returns `null` (does not throw), missing/empty display name falls back to a sensible default.
+3. **`lib/spotify-me.ts`** — `fetchProfile(token)`. Cases: 200 response with display name + avatar returns the full profile, 200 response with no `images` array returns profile with `avatarUrl: null` and initials derived from `display_name`, 401 returns `null`, non-2xx returns `null` (does not throw), missing/empty display name falls back to a sensible default. — _Correction (later): the function is now `fetchSpotifyProfile()`, with no token argument (see the profile module note above)._
 4. **`lib/api-client.ts`** — `apiFetch(path, init)`. Cases: 2xx returns parsed JSON, 401 throws typed `UnauthorizedError`, 5xx throws a generic error containing the server message, network failure throws a recognizable error, JSON-parse failure on a 2xx response throws a typed error.
 
 No tests are required for presentational components in this PRD. Those should be exercised by manual verification through the dev server (see Further Notes).
