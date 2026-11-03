@@ -2,27 +2,30 @@ import { Providers } from '@/components/providers';
 import { APP_DESCRIPTION, APP_NAME } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import type { Metadata } from 'next';
-import { Hanken_Grotesk, JetBrains_Mono, Space_Grotesk } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 
-const hankenGrotesk = Hanken_Grotesk({
+// Self-hosted (latin subset, variable weight) instead of next/font/google: Google Fonts
+// intermittently serves extensionless `/l/font?kit=` URLs that fail `next build`
+// (vercel/next.js#99114). ponytail: latin only; add latin-ext files if accented names render in the fallback.
+const hankenGrotesk = localFont({
+  src: './fonts/HankenGrotesk-latin.woff2',
   variable: '--font-hanken-grotesk',
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
+  weight: '400 800',
   display: 'swap',
 });
 
-const spaceGrotesk = Space_Grotesk({
+const spaceGrotesk = localFont({
+  src: './fonts/SpaceGrotesk-latin.woff2',
   variable: '--font-space-grotesk',
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+  weight: '400 700',
   display: 'swap',
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const jetbrainsMono = localFont({
+  src: './fonts/JetBrainsMono-latin.woff2',
   variable: '--font-jetbrains-mono',
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
+  weight: '400 600',
   display: 'swap',
 });
 
