@@ -12,3 +12,6 @@ design_handoff_vibecrafter
 
 # Per-developer Claude Code settings (gitignored)
 .claude
+
+# Generated knowledge graph
+graphify-out
