@@ -147,13 +147,14 @@ Install shadcn `Command` component. Rewrite `AddTrackSearch` to use shadcn `Comm
 
 ### Acceptance criteria
 
-- [ ] `useDebouncedValue` hook exists and is generic.
-- [ ] `useSearchTracks` hook exists with debounced query key.
-- [ ] `AddTrackSearch` uses shadcn `Command` for the search results dropdown.
-- [ ] No manual `useEffect` debounce or hand-rolled dropdown markup remains.
-- [ ] No `console.error` in the component.
-- [ ] `TrackCard` is reused for rendering search result items.
-- [ ] Gate passes: `pnpm lint && pnpm typecheck && pnpm build`.
+- [x] `useDebouncedValue` hook exists and is generic. — _Superseded: the debounce lives inside `useSearchTracks`, its only consumer; a generic hook for a single call site is an unneeded abstraction (global "no new abstraction for a single call site" rule)._
+- [x] `useSearchTracks` hook exists with debounced query key.
+- [x] `AddTrackSearch` uses shadcn `Command` for the search results dropdown. — Built on `components/ui/command.tsx` (`shouldFilter={false}`: results are server-side). The generated file was trimmed: registry's `cn` import repointed to `@/lib/utils` (and the stray `cn` npm package dropped), `CommandDialog`/InputGroup wrapper/check icon removed, so the CLI's `dialog.tsx` + `input-group.tsx` were not kept.
+- [x] No manual `useEffect` debounce or hand-rolled dropdown markup remains. — The component has no effect/ref/outside-click listener; outside-click is input blur (rows never take focus), Escape closes via `onKeyDown`. The debounce `useEffect` + `setTimeout` is inside `useSearchTracks` (see above).
+- [x] No `console.error` in the component. — The hook's `console.error` + sonner toast is the plan's API-error pattern.
+- [x] `TrackCard` is reused for rendering search result items.
+- [x] Gate passes: `pnpm lint && pnpm typecheck && pnpm build`.
+- [ ] Manual verification: keyboard nav (ArrowUp/Down moves the highlight, Enter adds it, Enter/arrows skip "Added" rows, Escape closes, ArrowDown reopens) and the redesign Phase 7 look (icon-left input, trailing spinner, shadow panel, 50% "Added" rows, click-outside closes) on both the builder refine step and the playlist add-tracks panel. _(Needs a browser; pending.)_
 
 ---
 
