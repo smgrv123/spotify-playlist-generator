@@ -11,6 +11,9 @@
 
 export const APP_NAME = 'Vibecrafter';
 
+export const APP_DESCRIPTION =
+  'Create and manage Spotify playlists from your own track lists. Paste, resolve, and save tracks directly to your Spotify account.';
+
 // ─── API Route Paths ──────────────────────────────────────────────────────────
 // Used by client-side hooks so URL changes require exactly one edit.
 

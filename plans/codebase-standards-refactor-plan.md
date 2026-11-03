@@ -42,15 +42,15 @@ Create a `ThemeToggle` button component using `next-themes` and add it to the pa
 
 ### Acceptance criteria
 
-- [ ] `react-query` v3 is removed from `package.json`.
-- [ ] `@tanstack/react-query` v5 and `next-themes` are installed.
-- [ ] `reactCompiler: true` is set in `next.config.ts`.
-- [ ] `Providers` component wraps the app with both providers.
-- [ ] Layout metadata reflects actual app name and description from constants.
-- [ ] Spotify brand colors use CSS variables; zero hardcoded hex values remain.
-- [ ] Theme toggle in the header cycles light → dark → system.
-- [ ] App renders correctly in both light and dark modes.
-- [ ] Gate passes: `pnpm lint && pnpm typecheck && pnpm build`.
+- [x] `react-query` v3 is removed from `package.json`.
+- [x] `@tanstack/react-query` v5 and `next-themes` are installed.
+- [x] `reactCompiler: true` is set in `next.config.ts`.
+- [x] `Providers` component wraps the app with both providers.
+- [x] Layout metadata reflects actual app name and description from constants.
+- [x] Spotify brand colors use CSS variables; zero hardcoded hex values remain. — _Superseded: the `--color-spotify` tokens were replaced by the redesign's token rewire (`--accent` etc.); the zero-hex intent holds (`plans/playlist-builder-redesign-prd.md:75`)._
+- [x] Theme toggle in the header cycles light → dark → system. — _Superseded: toggle is now a binary sun/moon button, system respected at initial load only (`plans/playlist-builder-redesign-prd.md:78`)._
+- [ ] App renders correctly in both light and dark modes. _(Manual verification pending.)_
+- [x] Gate passes: `pnpm lint && pnpm typecheck && pnpm build`.
 
 ---
 

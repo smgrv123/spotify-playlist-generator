@@ -1,4 +1,5 @@
 import { Providers } from '@/components/providers';
+import { APP_DESCRIPTION, APP_NAME } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import type { Metadata } from 'next';
 import { Hanken_Grotesk, JetBrains_Mono, Space_Grotesk } from 'next/font/google';
@@ -26,9 +27,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Vibecrafter — Spotify Playlist Manager',
-  description:
-    'Create and manage Spotify playlists from your own track lists. Paste, resolve, and save tracks directly to your Spotify account.',
+  title: `${APP_NAME} — Spotify Playlist Manager`,
+  description: APP_DESCRIPTION,
 };
 
 export default function RootLayout({
