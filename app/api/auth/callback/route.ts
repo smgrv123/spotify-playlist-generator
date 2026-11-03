@@ -1,4 +1,5 @@
 import { fail, normalizeError } from '@/lib/api-response';
+import { API_ERROR_CODE } from '@/lib/constants';
 import { clearSpotifyStateCookie, getSpotifyStateCookie, setSpotifyTokens } from '@/lib/cookies';
 import { env } from '@/lib/env';
 import { exchangeAuthCodeForToken } from '@/lib/spotify-auth';
@@ -12,11 +13,11 @@ export async function GET(request: NextRequest) {
     const errorParam = searchParams.get('error');
 
     if (errorParam) {
-      return fail('OAUTH_ERROR', `Spotify authorization failed: ${errorParam}`, 400);
+      return fail(API_ERROR_CODE.OAUTH_ERROR, `Spotify authorization failed: ${errorParam}`, 400);
     }
 
     if (!code || !state) {
-      return fail('INVALID_CALLBACK', 'Missing code or state in callback', 400);
+      return fail(API_ERROR_CODE.INVALID_CALLBACK, 'Missing code or state in callback', 400);
     }
 
     // Securely verify state cookie against the callback state URL param to prevent CSRF
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
 
     if (!storedState || storedState !== state) {
       return fail(
-        'INVALID_STATE',
+        API_ERROR_CODE.INVALID_STATE,
         'State mismatch or expired. This is likely a CSRF attempt or expired session.',
         400
       );

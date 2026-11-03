@@ -35,13 +35,25 @@ async function ensureValidToken(): Promise<string> {
       code: 'NO_SESSION',
       message: 'No active session or refresh token available. User must log in.',
     };
-    throw err;
+    // Attach status so normalizeError surfaces this as a 401 rather than defaulting to 500,
+    // letting the client's UnauthorizedError path redirect to /login.
+    throw Object.assign(new Error(err.message), {
+      code: err.code,
+      status: 401,
+    });
   }
 
   const refreshResult = await refreshAccessToken(tokens.refreshToken);
   if (!refreshResult.success) {
     await clearSpotifyTokens(); // Refresh failed, clear poisoned session
-    throw refreshResult.error;
+    const err = refreshResult.error;
+    // Same as above: attach status: 401 so this reaches the client as Unauthorized,
+    // not a generic 500, since the refresh token itself is invalid/expired.
+    throw Object.assign(new Error(err.message), {
+      code: err.code,
+      details: err.details,
+      status: 401,
+    });
   }
 
   await setSpotifyTokens(
@@ -86,7 +98,7 @@ async function spotifyFetch<T>(endpoint: string, options: FetchOptions = {}): Pr
       return {} as T;
     }
     try {
-      return JSON.parse(text) as T;
+      return JSON.parse(text);
     } catch (parseError) {
       console.error('Failed to parse Spotify response body:', parseError);
       throw new Error('Failed to parse Spotify response body.');
@@ -112,6 +124,8 @@ async function spotifyFetch<T>(endpoint: string, options: FetchOptions = {}): Pr
         return spotifyFetch<T>(endpoint, { ...options, _retry: true });
       }
     }
+
+    await clearSpotifyTokens(); // Refresh failed, clear poisoned session
   }
 
   // Intercept 429 Too Many Requests
@@ -128,14 +142,11 @@ async function spotifyFetch<T>(endpoint: string, options: FetchOptions = {}): Pr
     };
 
     // Note: We assign it to an object and throw so Next route handlers can grab it
-    const throwErr = new Error(err.message) as Error & {
-      code?: string;
-      details?: unknown;
-      status?: number;
-    };
-    throwErr.code = err.code;
-    throwErr.details = err.details;
-    throwErr.status = 429;
+    const throwErr = Object.assign(new Error(err.message), {
+      code: err.code,
+      details: err.details,
+      status: 429,
+    });
     throw throwErr;
   }
 
@@ -151,14 +162,11 @@ async function spotifyFetch<T>(endpoint: string, options: FetchOptions = {}): Pr
     errorPayload,
     `Spotify API request failed (${response.status})`
   );
-  const genericErr = new Error(parsedError.message) as Error & {
-    code?: string;
-    details?: unknown;
-    status?: number;
-  };
-  genericErr.code = parsedError.code;
-  genericErr.details = parsedError.details;
-  genericErr.status = response.status;
+  const genericErr = Object.assign(new Error(parsedError.message), {
+    code: parsedError.code,
+    details: parsedError.details,
+    status: response.status,
+  });
   throw genericErr;
 }
 

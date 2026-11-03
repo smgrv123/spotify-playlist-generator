@@ -1,78 +1,52 @@
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import type { ResolvedTrack } from '@/lib/types';
+'use client';
+
 import { Loader2, Plus, Search } from 'lucide-react';
-import Image from 'next/image';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+
+import { TrackCard } from '@/components/track-card';
+import { buttonVariants } from '@/components/ui/button';
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { useSearchTracks, type SearchResultTrack } from '@/hooks/use-search-tracks';
+import { TRACK_CARD_SIZE, TRACK_STATUS } from '@/lib/constants';
+import type { ResolvedTrack } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 interface AddTrackSearchProps {
   onAdd: (track: ResolvedTrack) => void;
   existingUris: Set<string>;
 }
 
-// Map the API response shape
-interface SearchResultTrack {
-  id: string;
-  name: string;
-  artists: { name: string }[];
-  uri: string;
-  album?: string;
-  image?: string;
-}
-
+/**
+ * Refine-step "add a track" search field, restyled to the Vibecrafter
+ * handoff: left-icon input with a trailing spinner while a search is
+ * in-flight, and an absolute-positioned results panel underneath it
+ * (`shadow-[var(--shadow-pop)]`, matching `.dropdown` in the handoff).
+ *
+ * Each result row shows album art (`TrackCard`, `size="sm"`, real image or
+ * gradient fallback), title/artist, and an Add button. Rows already present in the
+ * draft (by `spotifyUri`, via `existingUris`) render at 50% opacity with an
+ * "Added" label and are not clickable.
+ */
 export function AddTrackSearch({ onAdd, existingUris }: AddTrackSearchProps) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResultTrack[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showResults, setShowResults] = useState(false);
+  const [open, setOpen] = useState(false);
 
-  const searchRef = useRef<HTMLDivElement>(null);
-
-  // Close results when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setShowResults(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Debounced search effect
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (!query.trim()) {
-        setResults([]);
-        return;
-      }
-
-      setIsSearching(true);
-      try {
-        const res = await fetch(`/api/spotify/search?q=${encodeURIComponent(query)}`);
-        if (res.ok) {
-          const data = await res.json();
-          setResults(data.tracks || []);
-        }
-      } catch (err) {
-        console.error('Search failed:', err);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 400); // 400ms debounce
-
-    return () => clearTimeout(timer);
-  }, [query]);
+  const { results, isSearching } = useSearchTracks(query);
 
   const handleSelect = (track: SearchResultTrack) => {
-    // Prevent redundant additions
     if (existingUris.has(track.uri)) return;
 
-    // Map SearchResultTrack to our internal ResolvedTrack standard format
     const newTrack: ResolvedTrack = {
-      status: 'resolved',
+      status: TRACK_STATUS.RESOLVED,
       spotifyUri: track.uri,
       spotifyTrackId: track.id,
+      durationMs: track.duration ?? 0,
       displayData: {
         title: track.name,
         artist: track.artists.map((a) => a.name).join(', '),
@@ -83,87 +57,104 @@ export function AddTrackSearch({ onAdd, existingUris }: AddTrackSearchProps) {
 
     onAdd(newTrack);
     setQuery('');
-    setResults([]);
-    setShowResults(false);
+    setOpen(false);
   };
 
+  const trimmedQuery = query.trim();
+  const showNoResults = open && trimmedQuery !== '' && !isSearching && results.length === 0;
+
   return (
-    <div className="relative w-full" ref={searchRef}>
+    <Command
+      shouldFilter={false}
+      className="relative w-full"
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') setOpen(false);
+        if (event.key === 'ArrowDown') setOpen(true);
+      }}
+      // Focus only ever lives in the input (rows are never focused, see the
+      // list's `onMouseDown`), so blurring it means focus/click left the field.
+      onBlur={() => setOpen(false)}
+    >
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search for a track on Spotify to add manually..."
+        <Search
+          className="pointer-events-none absolute left-3.5 top-1/2 h-[17px] w-[17px] -translate-y-1/2 text-text-faint"
+          aria-hidden
+        />
+        <CommandInput
+          placeholder="Search Spotify to add a track…"
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setShowResults(true);
+          onValueChange={(value) => {
+            setQuery(value);
+            setOpen(true);
           }}
           onFocus={() => {
-            if (query.trim()) setShowResults(true);
+            if (trimmedQuery) setOpen(true);
           }}
-          className="pl-9 pr-10"
+          onKeyDown={(event) => {
+            if (event.key === 'Home' || event.key === 'End') event.stopPropagation();
+          }}
+          className="h-11 min-w-0 rounded-[var(--radius-sm)] border border-input bg-surface-inset py-1 pr-10 pl-10 text-[14.5px] text-foreground transition placeholder:text-text-faint focus-visible:border-primary focus-visible:bg-surface focus-visible:ring-[3px] focus-visible:ring-ring md:text-sm dark:bg-surface-inset"
         />
         {isSearching && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          </div>
+          <Loader2
+            className="pointer-events-none absolute right-3.5 top-1/2 h-[17px] w-[17px] -translate-y-1/2 animate-spin text-text-faint"
+            aria-hidden
+          />
         )}
       </div>
 
-      {showResults && results.length > 0 && (
-        <div className="absolute z-10 w-full mt-2 bg-popover text-popover-foreground border rounded-md shadow-md max-h-[300px] overflow-y-auto overflow-x-hidden">
+      {open && (results.length > 0 || showNoResults) && (
+        <CommandList
+          // Keep focus in the input when clicking rows, scrollbar or padding.
+          onMouseDown={(event) => event.preventDefault()}
+          className="absolute z-30 mt-2 max-h-[320px] w-full rounded-[var(--radius-lg)] border bg-surface p-1.5 shadow-[var(--shadow-pop)]"
+        >
+          {showNoResults && (
+            <CommandEmpty className="p-2.5 text-[13px] text-text-faint">
+              No tracks found for &quot;{trimmedQuery}&quot;.
+            </CommandEmpty>
+          )}
           {results.map((track) => {
             const isDuplicate = existingUris.has(track.uri);
             return (
-              <div
+              <CommandItem
                 key={track.uri}
-                className={`flex items-center justify-between p-3 border-b last:border-0 hover:bg-muted/50 transition-colors ${
-                  isDuplicate ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-                }`}
-                onClick={() => handleSelect(track)}
+                value={track.uri}
+                disabled={isDuplicate}
+                onSelect={() => handleSelect(track)}
+                className="cursor-pointer gap-3 rounded-[var(--radius-sm)] p-2.5 transition-colors data-[selected=true]:bg-surface-2 data-[disabled=true]:pointer-events-auto data-[disabled=true]:cursor-not-allowed"
               >
-                <div className="flex items-center space-x-3 overflow-hidden">
-                  {track.image ? (
-                    <div className="relative h-10 w-10 rounded overflow-hidden flex-shrink-0">
-                      <Image
-                        src={track.image}
-                        alt={track.album || track.name}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div className="h-10 w-10 rounded bg-muted flex-shrink-0 flex items-center justify-center">
-                      <span className="text-muted-foreground text-xs">No img</span>
-                    </div>
+                <TrackCard
+                  size={TRACK_CARD_SIZE.SM}
+                  title={track.name}
+                  artist={track.artists.map((a) => a.name).join(', ')}
+                  imageUrl={track.image || undefined}
+                  artSizeClassName="h-[38px] w-[38px] rounded-[8px]"
+                  artSizes="38px"
+                  titleClassName="text-[14px] font-medium"
+                  artistClassName="text-[12.5px] text-muted-foreground"
+                />
+                <span
+                  aria-hidden
+                  className={cn(
+                    buttonVariants({ variant: 'ghost', size: 'sm' }),
+                    'h-auto flex-shrink-0 rounded-[var(--radius-sm)] px-3.5 py-1.5 text-[13px] font-semibold'
                   )}
-                  <div className="flex flex-col min-w-0 pr-4">
-                    <span className="font-medium text-sm truncate">{track.name}</span>
-                    <span className="text-xs text-muted-foreground truncate">
-                      {track.artists.map((a) => a.name).join(', ')}
-                    </span>
-                  </div>
-                </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="flex-shrink-0"
-                  disabled={isDuplicate}
                 >
-                  <Plus className="h-4 w-4 mr-1" />
-                  {isDuplicate ? 'Added' : 'Add'}
-                </Button>
-              </div>
+                  {isDuplicate ? (
+                    'Added'
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4" aria-hidden />
+                      Add
+                    </>
+                  )}
+                </span>
+              </CommandItem>
             );
           })}
-        </div>
+        </CommandList>
       )}
-
-      {showResults && query.trim() && !isSearching && results.length === 0 && (
-        <div className="absolute z-10 w-full mt-2 bg-popover text-popover-foreground border rounded-md shadow-md p-4 text-center text-sm text-muted-foreground">
-          No tracks found for &quot;{query}&quot;.
-        </div>
-      )}
-    </div>
+    </Command>
   );
 }

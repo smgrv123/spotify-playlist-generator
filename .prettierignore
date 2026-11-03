@@ -1,0 +1,17 @@
+# Build outputs
+.next
+out
+build
+node_modules
+
+# Lockfiles
+pnpm-lock.yaml
+
+# Design reference, not project code
+design_handoff_vibecrafter
+
+# Per-developer Claude Code settings (gitignored)
+.claude
+
+# Generated knowledge graph
+graphify-out

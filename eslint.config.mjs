@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     'out/**',
     'build/**',
     'next-env.d.ts',
+    // Design reference, not project code:
+    'design_handoff_vibecrafter/**',
   ]),
 ]);
 

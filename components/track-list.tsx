@@ -1,20 +1,166 @@
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical, Trash2 } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { FailedTrack, ResolvedTrack } from '@/lib/types';
-import { AlertCircle, Trash2 } from 'lucide-react';
-import Image from 'next/image';
-
-type TrackItem = ResolvedTrack | FailedTrack;
+import { TrackCard } from '@/components/track-card';
+import type { TrackItem } from '@/lib/types';
+import { isResolved } from '@/lib/type-guards';
+import { cn } from '@/lib/utils';
 
 interface TrackListProps {
   tracks: TrackItem[];
   onRemove?: (index: number) => void;
   readOnly?: boolean;
   emptyMessage?: string;
+  /** Overrides the default fixed `h-[400px]` viewport — e.g. a shorter list nested in a longer form. */
+  heightClassName?: string;
+  /**
+   * Drag-to-reorder support (refine step's resolved-track list). When
+   * provided, rows become sortable via a grip handle and this list is wrapped
+   * in a dnd-kit `DndContext`. `oldIndex`/`newIndex` are positions within
+   * this component's own `tracks` prop — the caller (`BuilderShell`) is
+   * responsible for translating that into the full draft's `tracks` array,
+   * mirroring how `onRemove` indices are subset-local. Only resolved tracks
+   * are ever sortable — omit this prop for unresolved/failed lists.
+   */
+  onReorder?: (oldIndex: number, newIndex: number) => void;
+  /**
+   * Caller-supplied row identities, positionally parallel to `tracks`.
+   *
+   * The default identity (Spotify URI) is *not* duplicate-safe: a playlist may
+   * legitimately hold the same track twice, and both the React `key` and the
+   * `ids.indexOf(...)` lookup behind drag-and-drop then resolve to the first
+   * occurrence — so dragging the second copy moves the first. Callers that can
+   * hold duplicates (the `/playlists/[id]` editor, whose rows carry a UUID
+   * `rowId`) pass those ids here instead.
+   *
+   * Optional by design: callers whose lists cannot contain duplicates pass
+   * nothing and keep the URI-based identity unchanged.
+   */
+  rowIds?: string[];
 }
 
-export function TrackList({ tracks, onRemove, readOnly = false, emptyMessage }: TrackListProps) {
+/**
+ * Stable per-row id. An explicit `rowIds[index]` wins when the caller supplied
+ * one; otherwise resolved tracks use their Spotify URI and failed tracks
+ * (never sortable) fall back to a positional id.
+ */
+function trackId(track: TrackItem, index: number, rowIds?: string[]): string {
+  return rowIds?.[index] ?? (isResolved(track) ? track.spotifyUri : `failed-${index}`);
+}
+
+/** Shared row content: grip handle (sortable mode), track card, trailing remove button. */
+function TrackRowContent({
+  cardProps,
+  canRemove,
+  onRemove,
+  sortable,
+  dragHandleProps,
+}: {
+  cardProps: React.ComponentProps<typeof TrackCard>;
+  canRemove: boolean;
+  onRemove: () => void;
+  sortable: boolean;
+  dragHandleProps?: {
+    attributes: ReturnType<typeof useSortable>['attributes'];
+    listeners: ReturnType<typeof useSortable>['listeners'];
+  };
+}) {
+  return (
+    <>
+      {sortable ? (
+        <button
+          type="button"
+          className="flex h-[30px] w-[18px] flex-shrink-0 cursor-grab touch-none items-center justify-center rounded-[6px] text-text-faint opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
+          aria-label={`Reorder ${cardProps.title}`}
+          {...dragHandleProps?.attributes}
+          {...dragHandleProps?.listeners}
+        >
+          <GripVertical className="h-4 w-4" aria-hidden />
+        </button>
+      ) : (
+        // Grip-handle slot intentionally left empty for non-sortable (unresolved) rows.
+        <span className="hidden" aria-hidden />
+      )}
+      <div className="min-w-0 flex-1">
+        <TrackCard {...cardProps} />
+      </div>
+      {canRemove && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-[30px] w-[30px] flex-shrink-0 rounded-[8px] text-text-faint opacity-0 transition-all duration-150 group-hover:opacity-100 hover:bg-danger-soft hover:text-danger"
+          onClick={onRemove}
+          title="Remove track"
+        >
+          <Trash2 className="h-4 w-4" aria-hidden />
+        </Button>
+      )}
+    </>
+  );
+}
+
+/** Sortable row wrapper: wires `useSortable` and applies the drag transform. Only ever mounted for resolved tracks. */
+function SortableTrackRow({
+  id,
+  rowClassName,
+  ...rowProps
+}: {
+  id: string;
+  rowClassName: string;
+} & Omit<React.ComponentProps<typeof TrackRowContent>, 'sortable' | 'dragHandleProps'>) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(rowClassName, isDragging && 'z-10 shadow-[var(--shadow-card)]')}
+    >
+      <TrackRowContent {...rowProps} sortable dragHandleProps={{ attributes, listeners }} />
+    </div>
+  );
+}
+
+export function TrackList({
+  tracks,
+  onRemove,
+  readOnly = false,
+  emptyMessage,
+  heightClassName = 'h-[400px]',
+  onReorder,
+  rowIds,
+}: TrackListProps) {
   const canRemove = Boolean(onRemove) && !readOnly;
+  const sortable = Boolean(onReorder) && !readOnly;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
   if (tracks.length === 0) {
     return (
       <div className="h-48 border-2 border-dashed rounded-xl flex items-center justify-center text-muted-foreground bg-muted/10">
@@ -23,83 +169,76 @@ export function TrackList({ tracks, onRemove, readOnly = false, emptyMessage }: 
     );
   }
 
-  return (
-    <ScrollArea className="h-[400px] w-full rounded-md border p-4">
-      <div className="space-y-4">
-        {tracks.map((track, index) => {
-          if (track.status === 'failed') {
-            return (
-              <div
-                key={`failed-${index}`}
-                className="flex items-center justify-between p-3 border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900 rounded-lg"
-              >
-                <div className="flex items-center space-x-3 text-red-600 dark:text-red-400">
-                  <AlertCircle className="h-5 w-5 flex-shrink-0" />
-                  <div className="flex flex-col">
-                    <span className="font-medium text-sm">
-                      {track.query.title} - {track.query.artist}
-                    </span>
-                    <span className="text-xs opacity-80">Could not find a match on Spotify</span>
-                  </div>
-                </div>
-                {canRemove && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-red-600 hover:text-red-700 hover:bg-red-100 dark:hover:bg-red-900/50"
-                    onClick={() => onRemove?.(index)}
-                    title="Remove track"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            );
-          }
+  // Single source of row identity for this render: the `SortableContext`
+  // items, the drag index lookup below, each `useSortable({ id })` and every
+  // React `key` all read from this one array.
+  const ids = tracks.map((track, index) => trackId(track, index, rowIds));
 
-          // Resolved Track
-          return (
-            <div
-              key={track.spotifyUri}
-              className="flex items-center justify-between p-3 border bg-card hover:bg-muted/50 transition-colors rounded-lg group"
-            >
-              <div className="flex items-center space-x-3 overflow-hidden">
-                {track.displayData.imageUrl ? (
-                  <div className="relative h-10 w-10 rounded overflow-hidden flex-shrink-0">
-                    <Image
-                      src={track.displayData.imageUrl}
-                      alt={track.displayData.albumContext || track.displayData.title}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                ) : (
-                  <div className="h-10 w-10 rounded bg-muted flex-shrink-0 flex items-center justify-center">
-                    <span className="text-muted-foreground text-xs">No img</span>
-                  </div>
-                )}
-                <div className="flex flex-col min-w-0 pr-4">
-                  <span className="font-medium text-sm truncate">{track.displayData.title}</span>
-                  <span className="text-xs text-muted-foreground truncate">
-                    {track.displayData.artist}
-                  </span>
-                </div>
-              </div>
-              {canRemove && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                  onClick={() => onRemove?.(index)}
-                  title="Remove track"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          );
-        })}
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = ids.indexOf(String(active.id));
+    const newIndex = ids.indexOf(String(over.id));
+    if (oldIndex === -1 || newIndex === -1) return;
+    onReorder?.(oldIndex, newIndex);
+  };
+
+  const rows = tracks.map((track, index) => {
+    const resolved = isResolved(track);
+    const cardProps = resolved
+      ? {
+          title: track.displayData.title,
+          artist: track.displayData.artist,
+          albumContext: track.displayData.albumContext,
+          imageUrl: track.displayData.imageUrl,
+          isFailed: false,
+          durationMs: track.durationMs,
+        }
+      : {
+          title: track.query.title,
+          artist: track.query.artist,
+          albumContext: undefined,
+          imageUrl: undefined,
+          isFailed: true,
+          durationMs: undefined,
+        };
+
+    const rowClassName = cn(
+      'group flex items-center gap-[13px] rounded-[var(--radius-sm)] border py-[9px] px-[11px] transition-colors',
+      resolved
+        ? 'border-border bg-surface hover:border-border-strong hover:bg-surface-2'
+        : 'border-danger/30 bg-danger-soft'
+    );
+
+    const id = ids[index];
+    const rowProps = {
+      cardProps,
+      canRemove,
+      onRemove: () => onRemove?.(index),
+    };
+
+    if (sortable && resolved) {
+      return <SortableTrackRow key={id} id={id} rowClassName={rowClassName} {...rowProps} />;
+    }
+
+    return (
+      <div key={id} className={rowClassName}>
+        <TrackRowContent {...rowProps} sortable={false} />
       </div>
+    );
+  });
+
+  return (
+    <ScrollArea className={cn('w-full rounded-md border p-4', heightClassName)}>
+      {sortable ? (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+            <div className="space-y-[7px]">{rows}</div>
+          </SortableContext>
+        </DndContext>
+      ) : (
+        <div className="space-y-[7px]">{rows}</div>
+      )}
     </ScrollArea>
   );
 }

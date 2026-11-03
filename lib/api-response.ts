@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
+import { API_ERROR_CODE, ApiErrorCode } from './constants';
+import { logger } from './logger';
 import { ApiError } from './types';
+import { isApiErrorShape } from './type-guards';
 import { formatZodErrors } from './utils';
 
 export function ok<T>(data: T, status: number = 200): NextResponse<T> {
@@ -8,71 +11,61 @@ export function ok<T>(data: T, status: number = 200): NextResponse<T> {
 }
 
 export function fail(
-  code: string,
+  code: ApiErrorCode,
   message: string,
   status: number = 500,
   details?: unknown
 ): NextResponse<ApiError> {
-  const payload: ApiError = {
-    code,
-    message,
-  };
+  const payload: ApiError = { code, message };
 
-  if (details) {
+  if (details !== undefined) {
     payload.details = details;
   }
-
-  // Optional: For 429 errors, we could map a retryAfterSeconds property if provided in details.
-  // For now, adhering strictly to the failure signature requested.
 
   return NextResponse.json(payload, { status });
 }
 
 export function normalizeError(error: unknown): NextResponse<ApiError> {
   if (error instanceof ZodError) {
-    return fail('VALIDATION_ERROR', 'Invalid request payload', 400, formatZodErrors(error));
-  }
-
-  // Handle known ApiError-like objects if they got thrown
-  if (typeof error === 'object' && error !== null && 'code' in error && 'message' in error) {
-    const err = error as Partial<ApiError>;
     return fail(
-      err.code || 'UNKNOWN_ERROR',
-      err.message || 'An unexpected error occurred',
-      'status' in error && typeof (error as Record<string, unknown>).status === 'number'
-        ? ((error as Record<string, unknown>).status as number)
-        : 500,
-      err.details
+      API_ERROR_CODE.VALIDATION_ERROR,
+      'Invalid request payload',
+      400,
+      formatZodErrors(error)
     );
   }
 
-  // Fallback for raw errors
-  console.error('📛 Unhandled API Error caught in normalizeError:', error);
-  // Do NOT leak raw stack traces or unknown error messages to the client
-  return fail('INTERNAL_SERVER_ERROR', 'An unexpected internal server error occurred.', 500);
+  if (isApiErrorShape(error)) {
+    const statusValue = 'status' in error && typeof error.status === 'number' ? error.status : 500;
+    return NextResponse.json(
+      {
+        code: error.code,
+        message: error.message,
+        ...(error.details !== undefined && { details: error.details }),
+      },
+      { status: statusValue }
+    );
+  }
+
+  logger.error('Unhandled error caught in normalizeError', error);
+  return fail(
+    API_ERROR_CODE.INTERNAL_SERVER_ERROR,
+    'An unexpected internal server error occurred.',
+    500
+  );
 }
 
 export function parseExternalError(error: unknown, fallbackMessage: string): ApiError {
-  // If the external service provides an error payload, parse it carefully.
-  // We do not want to blindly stringify as it might contain upstream secrets.
   let parsedDetails: unknown = undefined;
 
   if (typeof error === 'object' && error !== null) {
-    // Attempt to extract safe fields from common error shape (e.g. Axios or fetch)
-    const err = error as Record<string, unknown>;
-
-    // External APIs often return error.message or error.error.message
-    const responseData = (err?.response as Record<string, unknown>)?.data as Record<
-      string,
-      unknown
-    >;
-    const errorData = responseData?.error as Record<string, unknown>;
-    const directError = err?.error as Record<string, unknown> | string | undefined;
+    const directError = 'error' in error ? error.error : undefined;
     const externalMessage =
-      errorData?.message ||
-      (typeof directError === 'object' && directError !== null ? directError.message : undefined) ||
-      err?.message ||
-      err?.error_description;
+      (typeof directError === 'object' && directError !== null && 'message' in directError
+        ? directError.message
+        : undefined) ||
+      ('message' in error ? error.message : undefined) ||
+      ('error_description' in error ? error.error_description : undefined);
 
     if (typeof externalMessage === 'string') {
       parsedDetails = { externalMessage };
@@ -80,7 +73,7 @@ export function parseExternalError(error: unknown, fallbackMessage: string): Api
   }
 
   return {
-    code: 'EXTERNAL_SERVICE_ERROR',
+    code: API_ERROR_CODE.EXTERNAL_SERVICE_ERROR,
     message: fallbackMessage,
     details: parsedDetails,
   };

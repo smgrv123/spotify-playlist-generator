@@ -1,56 +1,44 @@
 import { normalizeError, ok } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
+import {
+  SpotifyMeIdResponse,
+  SpotifyPlaylistsResponse,
+  SpotifyPlaylistItem,
+} from '@/lib/spotify-types';
+import { toPlaylistSummary } from '@/lib/spotify-mappers';
 import { spotifyClient } from '@/lib/spotify-client';
 import crypto from 'crypto';
-import { NextRequest } from 'next/server';
 
-interface SpotifyPlaylistsResponse {
-  items?: Array<{
-    id: string;
-    name: string;
-    public: boolean | null;
-    description: string | null;
-    collaborative?: boolean;
-    owner?: { id?: string | null };
-    images?: Array<{ url: string }>;
-  }>;
-  next: string | null;
-}
-
-export async function GET(request: NextRequest) {
+export async function GET() {
   const reqId = crypto.randomUUID();
-  logger.info('Fetch user playlists request started', { reqId });
 
   try {
-    // Only fetch first page (up to 50 playlists limit max per Spotify default)
-    // Extendable via url params and the returned `next` cursor later
-    const searchParams = request.nextUrl.searchParams;
-    const limit = searchParams.get('limit') || '50';
-    const offset = searchParams.get('offset') || '0';
+    const fetchAllPlaylistItems = async () => {
+      const items: SpotifyPlaylistItem[] = [];
+      let nextUrl: string | null = '/me/playlists?limit=50';
 
-    const data = await spotifyClient.get<SpotifyPlaylistsResponse>(
-      `/me/playlists?limit=${limit}&offset=${offset}`
-    );
+      while (nextUrl) {
+        const data: SpotifyPlaylistsResponse =
+          await spotifyClient.get<SpotifyPlaylistsResponse>(nextUrl);
+        items.push(...(data.items || []));
+        nextUrl = data.next;
+      }
 
-    const items = data.items || [];
-    const profile = await spotifyClient.get<{ id: string }>('/me');
+      return items;
+    };
+
+    const [items, profile] = await Promise.all([
+      fetchAllPlaylistItems(),
+      spotifyClient.get<SpotifyMeIdResponse>('/me'),
+    ]);
     const editableItems = items.filter(
       (playlist) => playlist.owner?.id === profile.id || playlist.collaborative
     );
 
-    // Map to minimal, stable UI payload discarding unnecessary Spotify metadata
-    const mappedPlaylists = editableItems.map((playlist) => ({
-      id: playlist.id,
-      name: playlist.name,
-      public: !!playlist.public, // force boolean
-      description: playlist.description || '',
-      imageUrl: playlist.images?.[0]?.url || null, // Best resolution image (usually index 0)
-    }));
+    const mappedPlaylists = editableItems.map((playlist) => toPlaylistSummary(playlist));
 
-    logger.info('Fetch user playlists complete', { reqId, returned: mappedPlaylists.length });
     return ok({
       playlists: mappedPlaylists,
-      next: data.next,
     });
   } catch (error) {
     logger.error('Fetch user playlists failed', error, { reqId });

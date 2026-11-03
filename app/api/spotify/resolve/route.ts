@@ -1,6 +1,8 @@
 import { fail, normalizeError, ok } from '@/lib/api-response';
+import { API_ERROR_CODE, FAILED_REASON, TRACK_STATUS } from '@/lib/constants';
 import { logger } from '@/lib/logger';
 import { resolveRequestSchema } from '@/lib/schemas';
+import { SpotifySearchResponse } from '@/lib/spotify-types';
 import { spotifyClient } from '@/lib/spotify-client';
 import { ResolveResponse } from '@/lib/types';
 import { formatZodErrors } from '@/lib/utils';
@@ -10,24 +12,8 @@ import { NextRequest } from 'next/server';
 // Maximum tracks to resolve concurrently to protect against immediate rate limit spikes
 const CHUNK_SIZE = 10;
 
-interface SpotifySearchResponse {
-  tracks?: {
-    items?: Array<{
-      id: string;
-      name: string;
-      uri: string;
-      artists: Array<{ name: string }>;
-      album?: {
-        name: string;
-        images?: Array<{ url: string }>;
-      };
-    }>;
-  };
-}
-
 export async function POST(request: NextRequest) {
   const reqId = crypto.randomUUID();
-  logger.info('Resolve request started', { reqId });
 
   try {
     const rawBody = await request.json();
@@ -39,7 +25,7 @@ export async function POST(request: NextRequest) {
         issues: validationResult.error.issues,
       });
       return fail(
-        'VALIDATION_ERROR',
+        API_ERROR_CODE.VALIDATION_ERROR,
         'Invalid resolve request',
         400,
         formatZodErrors(validationResult.error)
@@ -48,7 +34,6 @@ export async function POST(request: NextRequest) {
 
     const { tracks } = validationResult.data;
 
-    // We process the array in sequential chunks to cap parallelism, but within the chunk, requests are parallel
     const resolvedTracks: ResolveResponse[] = new Array(tracks.length);
 
     for (let i = 0; i < tracks.length; i += CHUNK_SIZE) {
@@ -60,7 +45,6 @@ export async function POST(request: NextRequest) {
           const globalIndex = chunkIndices[indexInChunk];
 
           try {
-            // Construct explicit track/artist query
             const q = `track:${track.title} artist:${track.artist}${
               track.album ? ` album:${track.album}` : ''
             }`;
@@ -74,8 +58,8 @@ export async function POST(request: NextRequest) {
 
             if (items.length === 0) {
               resolvedTracks[globalIndex] = {
-                status: 'failed',
-                reason: 'NO_MATCH',
+                status: TRACK_STATUS.FAILED,
+                reason: FAILED_REASON.NO_MATCH,
                 query: { title: track.title, artist: track.artist },
               };
               return;
@@ -83,9 +67,10 @@ export async function POST(request: NextRequest) {
 
             const matchedTrack = items[0];
             resolvedTracks[globalIndex] = {
-              status: 'resolved',
+              status: TRACK_STATUS.RESOLVED,
               spotifyUri: matchedTrack.uri,
               spotifyTrackId: matchedTrack.id,
+              durationMs: matchedTrack.duration_ms,
               displayData: {
                 title: matchedTrack.name,
                 artist: matchedTrack.artists.map((a) => a.name).join(', '),
@@ -93,33 +78,30 @@ export async function POST(request: NextRequest) {
                 imageUrl: matchedTrack.album?.images?.[0]?.url,
               },
             };
-          } catch (error) {
             // A systemic failure on a SINGLE track should not take down the whole batch.
             // Log parsing/network problems, but map to SEARCH_ERROR to let the UI prompt a manual retry.
+          } catch (error) {
             logger.warn(`Failed resolving track ${track.title} by ${track.artist}:`, {
               reqId,
               error: error instanceof Error ? error.message : 'Unknown error',
             });
             resolvedTracks[globalIndex] = {
-              status: 'failed',
-              reason: 'SEARCH_ERROR',
+              status: TRACK_STATUS.FAILED,
+              reason: FAILED_REASON.SEARCH_ERROR,
               query: { title: track.title, artist: track.artist },
             };
           }
         }
       );
 
-      // Wait for the entire chunk of 10 to resolve before beginning the next chunk
       await Promise.all(chunkPromises);
     }
 
-    // Since we assigned by global index, sorting/ordering is impeccably maintained identically to the `tracks` array.
-    logger.info('Resolve request complete', { reqId, resolvedCount: resolvedTracks.length });
     return ok({ results: resolvedTracks });
   } catch (error) {
     if (error instanceof SyntaxError) {
       logger.warn('Resolve request failed JSON parse', { reqId });
-      return fail('VALIDATION_ERROR', 'Invalid JSON body', 400);
+      return fail(API_ERROR_CODE.VALIDATION_ERROR, 'Invalid JSON body', 400);
     }
     logger.error('Resolve pipeline failed entirely', error, { reqId });
     return normalizeError(error);
