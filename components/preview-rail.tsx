@@ -3,15 +3,15 @@
 import { CoverCollage } from '@/components/cover-collage';
 import { TrackCard } from '@/components/track-card';
 import { Input } from '@/components/ui/input';
-import type { ResolvedTrack } from '@/lib/types';
+import type { DraftResolvedTrack } from '@/lib/types';
 
 interface PreviewRailProps {
-  tracks: ResolvedTrack[];
+  tracks: DraftResolvedTrack[];
   name: string;
   onNameChange: (name: string) => void;
 }
 
-function totalDurationMs(tracks: ResolvedTrack[]): number {
+function totalDurationMs(tracks: DraftResolvedTrack[]): number {
   return tracks.reduce<number>((acc, track) => acc + track.durationMs, 0);
 }
 
@@ -83,7 +83,7 @@ export function PreviewRail({ tracks, name, onNameChange }: PreviewRailProps) {
             const { title, artist, imageUrl } = track.displayData;
             return (
               <div
-                key={track.spotifyUri}
+                key={track.rowId}
                 className="flex items-center gap-3 rounded-[var(--radius-sm)] px-1.5 py-1.5 hover:bg-surface-2"
               >
                 <TrackCard size="sm" title={title} artist={artist} imageUrl={imageUrl} />

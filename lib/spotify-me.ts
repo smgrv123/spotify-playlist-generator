@@ -1,3 +1,4 @@
+import { spotifyClient } from './spotify-client';
 import type { UserProfile } from './types';
 
 /**
@@ -8,8 +9,6 @@ import type { UserProfile } from './types';
  * display_name, malformed JSON) collapse to `null` so the caller can
  * treat "no profile" as a single branch.
  */
-
-const SPOTIFY_ME_ENDPOINT = 'https://api.spotify.com/v1/me';
 
 interface SpotifyMeResponse {
   display_name?: string | null;
@@ -33,31 +32,23 @@ export function deriveInitials(displayName: string): string {
 /**
  * Fetches the authenticated user's profile from Spotify's `/v1/me`.
  *
- * Returns `null` on any failure path (401, non-2xx, network error,
- * malformed JSON, or empty display_name). On success, returns a
- * fully-derived `UserProfile` including `initials` and a possibly-null
- * `avatarUrl`.
+ * Routes through `spotifyClient`, which reads/refreshes the access token
+ * from cookies internally, so an expiring-but-refreshable session still
+ * resolves a profile instead of getting a raw 401.
+ *
+ * Returns `null` on any failure path (no session, refresh failure, non-2xx,
+ * network error, malformed JSON, or empty display_name). On success,
+ * returns a fully-derived `UserProfile` including `initials` and a
+ * possibly-null `avatarUrl`.
  *
  * The empty-display_name case returns null intentionally: a chip with
  * no name has nothing to show, and treating it as "no profile" is the
  * simplest contract for the consumer.
  */
-export async function fetchSpotifyProfile(accessToken: string): Promise<UserProfile | null> {
-  let response: Response;
-  try {
-    response = await fetch(SPOTIFY_ME_ENDPOINT, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      cache: 'no-store',
-    });
-  } catch {
-    return null;
-  }
-
-  if (!response.ok) return null;
-
+export async function fetchSpotifyProfile(): Promise<UserProfile | null> {
   let body: SpotifyMeResponse;
   try {
-    body = (await response.json()) as SpotifyMeResponse;
+    body = await spotifyClient.get<SpotifyMeResponse>('/me');
   } catch {
     return null;
   }

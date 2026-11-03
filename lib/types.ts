@@ -60,3 +60,14 @@ export interface SessionResponse {
  * fields.
  */
 export type Draft = z.infer<typeof schemas.draftSchema>;
+
+/**
+ * Draft track variants after `draftSchema` attaches a client-minted `rowId`
+ * (see `components/builder-shell.tsx`). Pasting the same song twice produces
+ * two entries sharing a `spotifyUri` but with distinct `rowId`s — that's the
+ * identity `TrackList`'s `rowIds` prop and `PreviewRail`/`CoverCollage`'s row
+ * keys use instead, so duplicates don't collide on URI.
+ */
+export type DraftTrack = Draft['tracks'][number];
+export type DraftResolvedTrack = Extract<DraftTrack, { status: 'resolved' }>;
+export type DraftFailedTrack = Extract<DraftTrack, { status: 'failed' }>;

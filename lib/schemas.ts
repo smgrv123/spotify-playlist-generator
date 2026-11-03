@@ -55,7 +55,7 @@ export const resolveResponseSchema = z.discriminatedUnion('status', [
 export const saveRequestSchema = z.object({
   playlistId: z.string().optional(),
   playlistName: z.string(),
-  uris: z.array(z.string()),
+  uris: z.array(z.string().regex(/^spotify:track:[A-Za-z0-9]{22}$/)).max(10000),
   mode: z.enum(Object.values(UPDATE_MODE) as [UpdateMode, ...UpdateMode[]]).optional(),
   isPublic: z.boolean().optional(),
 });
@@ -93,6 +93,7 @@ export const playlistDetailSchema = z.object({
   ownerId: z.string().nullable(),
   ownerName: z.string().nullable(),
   isOwner: z.boolean(),
+  collaborative: z.boolean(),
 });
 
 /**
@@ -120,12 +121,28 @@ const builderStepSchema = z.union([
 ]);
 
 /**
+ * Per-track schema used only inside `draftSchema`. Adds a client-minted
+ * `rowId` (see `components/builder-shell.tsx`) so pasting the same song
+ * twice — the resolve route doesn't dedupe — doesn't collide on
+ * `spotifyUri` for React keys and `TrackList`'s drag-and-drop identity,
+ * mirroring `lib/playlist-edit.ts`'s `EditableRow` pattern. Kept separate
+ * from `resolveResponseSchema` because that schema is the resolve API's
+ * response contract and has no `rowId` concept.
+ */
+const draftResolvedTrackSchema = resolvedTrackSchema.extend({ rowId: z.string() });
+const draftFailedTrackSchema = failedTrackSchema.extend({ rowId: z.string() });
+const draftTrackSchema = z.discriminatedUnion('status', [
+  draftResolvedTrackSchema,
+  draftFailedTrackSchema,
+]);
+
+/**
  * Full `Draft` shape validated at the sessionStorage boundary. Persisted data
  * is untrusted input — any missing / extra / mistyped field collapses to
  * `null` in `loadDraft()`.
  */
 export const draftSchema = z.object({
-  tracks: z.array(resolveResponseSchema),
+  tracks: z.array(draftTrackSchema),
   name: z.string(),
   visibility: z.enum(Object.values(VISIBILITY) as [Visibility, ...Visibility[]]),
   step: builderStepSchema,

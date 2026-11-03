@@ -61,6 +61,9 @@ export function PlaylistDetailHeader({
   // a cleared field falls back to the saved name rather than rendering blank.
   const headingName = name.trim() || detail.name;
   const ownerLabel = detail.ownerName ?? detail.ownerId;
+  // Owners and collaborators can rename/change visibility/save; only the
+  // owner can delete.
+  const canEdit = detail.isOwner || detail.collaborative;
 
   return (
     <section className="rounded-[var(--radius-lg)] border bg-surface p-6 shadow-card sm:p-8">
@@ -110,7 +113,7 @@ export function PlaylistDetailHeader({
             onNameChange={onNameChange}
             visibility={isPublic ? VISIBILITY.PUBLIC : VISIBILITY.PRIVATE}
             onVisibilityChange={(visibility) => onIsPublicChange(visibility === VISIBILITY.PUBLIC)}
-            disabled={isSaving}
+            disabled={isSaving || !canEdit}
             idPrefix="playlist-detail"
             nameHint={
               name.trim().length === 0
@@ -138,7 +141,7 @@ export function PlaylistDetailHeader({
           <AlertDialogTrigger asChild>
             <Button
               variant="ghost"
-              disabled={isDeleting || isSaving}
+              disabled={isDeleting || isSaving || !detail.isOwner}
               className="text-danger hover:bg-danger-soft hover:text-danger"
             >
               {isDeleting ? (

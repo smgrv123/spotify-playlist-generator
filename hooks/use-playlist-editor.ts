@@ -156,7 +156,8 @@ export function usePlaylistEditor(
     setIsPublic(baseline.isPublic);
   };
 
-  const canSave = name.trim().length > 0 && !hasConflict;
+  const canSave =
+    name.trim().length > 0 && !hasConflict && !!detail && (detail.isOwner || detail.collaborative);
 
   const save = () => {
     const trimmedName = name.trim();
@@ -175,7 +176,22 @@ export function usePlaylistEditor(
         // stale baseline, read as "the server moved while you had unsaved
         // changes", and flag a conflict on a save that actually succeeded.
         // Editing is frozen while `isSaving`, so `rows` cannot have drifted.
-        onSuccess: () => setBaseline({ tracks: rows, name: trimmedName, isPublic }),
+        //
+        // `syncedSeed` moves alongside it, stamped with the *anticipated*
+        // post-save seed (same `orderKey::name::isPublic` shape as `seed`
+        // above). The cache invalidation that follows a successful save is
+        // fire-and-forget (see `use-save-playlist.ts`), so the refetch can land
+        // after `isSaving` has already flipped back to `false`. Without this
+        // stamp, that confirming refetch would find `syncedSeed` still pointing
+        // at the pre-save value, read as "the server moved," and drop the editor
+        // into `conflict` right after a successful save. Stamping the
+        // anticipated value here makes that refetch a no-op the instant it
+        // matches, while any real edit made in the interim still produces a
+        // different seed and is handled as ordinary unsaved local state.
+        onSuccess: () => {
+          setBaseline({ tracks: rows, name: trimmedName, isPublic });
+          setSyncedSeed(`${orderKey(rows)}::${trimmedName}::${isPublic}`);
+        },
       }
     );
   };

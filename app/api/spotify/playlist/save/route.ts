@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
       // `public` is spread in conditionally: callers that omit `isPublic` are
       // renaming or re-ordering only, and must not have visibility flipped as a
       // side effect of the update.
-      await spotifyClient.put(`/playlists/${targetPlaylistId}`, {
+      await spotifyClient.put(`/playlists/${encodeURIComponent(targetPlaylistId)}`, {
         name: trimmedName,
         ...(isPublic !== undefined && { public: isPublic }),
       });
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
         chunkSize: initialChunk.length,
       });
       const replaceResponse = await spotifyClient.put<AddItemsResponse>(
-        `/playlists/${targetPlaylistId}/items`,
+        `/playlists/${encodeURIComponent(targetPlaylistId)}/items`,
         { uris: initialChunk }
       );
       finalSnapshotId = replaceResponse.snapshot_id;
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
           chunkSize: chunk.length,
         });
         const addRes = await spotifyClient.post<{ snapshot_id: string }>(
-          `/playlists/${targetPlaylistId}/items`,
+          `/playlists/${encodeURIComponent(targetPlaylistId)}/items`,
           { uris: chunk }
         );
         finalSnapshotId = addRes.snapshot_id;
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
           chunkSize: chunk.length,
         });
         const addRes = await spotifyClient.post<{ snapshot_id: string }>(
-          `/playlists/${targetPlaylistId}/items`,
+          `/playlists/${encodeURIComponent(targetPlaylistId)}/items`,
           { uris: chunk }
         );
         finalSnapshotId = addRes.snapshot_id;

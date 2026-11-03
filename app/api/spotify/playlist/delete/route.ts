@@ -27,8 +27,24 @@ export async function POST(request: NextRequest) {
     }
 
     const { playlistId } = validationResult.data;
+    const encodedPlaylistId = encodeURIComponent(playlistId);
 
-    await spotifyClient.delete(`/playlists/${playlistId}/followers`);
+    // Ownership check runs before the unfollow call: Spotify's unfollow endpoint
+    // succeeds for non-owners too, which would silently no-op a "delete" instead
+    // of rejecting it. Fetched in parallel, mirroring the GET playlist route.
+    const [playlist, profile] = await Promise.all([
+      spotifyClient.get<{ owner?: { id?: string } }>(
+        `/playlists/${encodedPlaylistId}?fields=owner(id)`
+      ),
+      spotifyClient.get<{ id: string }>('/me'),
+    ]);
+
+    if (playlist.owner?.id !== profile.id) {
+      logger.warn('Delete playlist forbidden: requester is not the owner', { reqId, playlistId });
+      return fail('FORBIDDEN', 'Only the playlist owner can delete this playlist', 403);
+    }
+
+    await spotifyClient.delete(`/playlists/${encodedPlaylistId}/followers`);
 
     return ok({ playlistId });
   } catch (error) {

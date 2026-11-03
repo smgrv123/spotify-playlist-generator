@@ -14,6 +14,7 @@ const SAMPLE_DRAFT: Draft = {
       spotifyUri: 'spotify:track:abc123',
       spotifyTrackId: 'abc123',
       durationMs: 210_000,
+      rowId: 'row-1',
       displayData: {
         title: 'Sample Song',
         artist: 'Sample Artist',
@@ -25,6 +26,7 @@ const SAMPLE_DRAFT: Draft = {
       status: 'failed',
       reason: 'NO_MATCH',
       query: { title: 'Missing', artist: 'Nobody' },
+      rowId: 'row-2',
     },
   ],
   name: 'My Playlist',
@@ -92,6 +94,27 @@ describe('draft-storage (browser)', () => {
   it('clearDraft removes the key so loadDraft returns null again', () => {
     saveDraft(SAMPLE_DRAFT);
     clearDraft();
+    expect(loadDraft()).toBeNull();
+  });
+
+  it('round-trips distinct rowIds per track', () => {
+    saveDraft(SAMPLE_DRAFT);
+    const rowIds = loadDraft()?.tracks.map((track) => track.rowId) ?? [];
+    expect(rowIds).toEqual(['row-1', 'row-2']);
+    expect(new Set(rowIds).size).toBe(rowIds.length);
+  });
+
+  it('rejects a draft persisted under the pre-rowId key/shape after the storage-key version bump', () => {
+    const OLD_DRAFT_STORAGE_KEY = 'spotify-playlist-builder-draft-v2';
+    const oldShapedDraft = {
+      ...SAMPLE_DRAFT,
+      tracks: SAMPLE_DRAFT.tracks.map((track) => {
+        const clone: Record<string, unknown> = { ...track };
+        delete clone.rowId;
+        return clone;
+      }),
+    };
+    storage.setItem(OLD_DRAFT_STORAGE_KEY, JSON.stringify(oldShapedDraft));
     expect(loadDraft()).toBeNull();
   });
 });

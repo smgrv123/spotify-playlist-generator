@@ -10,10 +10,17 @@ import { Stepper } from '@/components/stepper';
 import { TrackCard } from '@/components/track-card';
 import { TrackList } from '@/components/track-list';
 import { TrackPasteForm } from '@/components/track-paste-form';
-import { BUILDER_STEP, BUILDER_STEP_META, type Visibility } from '@/lib/constants';
+import { BUILDER_STEP, BUILDER_STEP_META, TRACK_STATUS, type Visibility } from '@/lib/constants';
 import * as draftStore from '@/lib/draft-store';
-import { isFailed, isResolved } from '@/lib/type-guards';
-import type { BuilderStep, ResolvedTrack, TrackItem } from '@/lib/types';
+import { isResolved } from '@/lib/type-guards';
+import type {
+  BuilderStep,
+  DraftFailedTrack,
+  DraftResolvedTrack,
+  DraftTrack,
+  ResolvedTrack,
+  TrackItem,
+} from '@/lib/types';
 
 /**
  * Top-level builder UI rendered on `/` for authenticated users.
@@ -49,13 +56,19 @@ export function BuilderShell() {
    * renders the failed rows inline beneath the paste UI via `unresolvedSlot`.
    */
   const handleTracksResolved = (newTracks: TrackItem[]) => {
+    // Mint a `rowId` per track as it enters the draft — mirrors
+    // `lib/playlist-edit.ts`'s `toEditableRows()`. The resolve route doesn't
+    // dedupe, so pasting the same song twice yields two tracks sharing a
+    // `spotifyUri`; `rowId` gives each occurrence a distinct identity for
+    // React keys and `TrackList`'s drag-and-drop.
+    const withRowIds = newTracks.map((track) => ({ ...track, rowId: crypto.randomUUID() }));
     draftStore.update((prev) => {
       if (!newTracks.some(isResolved)) {
-        return { ...prev, tracks: newTracks };
+        return { ...prev, tracks: withRowIds };
       }
       return {
         ...prev,
-        tracks: newTracks,
+        tracks: withRowIds,
         step: BUILDER_STEP.REFINE,
         maxReached: prev.maxReached >= BUILDER_STEP.REFINE ? prev.maxReached : BUILDER_STEP.REFINE,
       };
@@ -63,10 +76,13 @@ export function BuilderShell() {
   };
 
   const handleAddTrack = (track: ResolvedTrack) => {
-    draftStore.update((prev) => ({ ...prev, tracks: [track, ...prev.tracks] }));
+    draftStore.update((prev) => ({
+      ...prev,
+      tracks: [{ ...track, rowId: crypto.randomUUID() }, ...prev.tracks],
+    }));
   };
 
-  const handleRemoveFromSubset = (subset: TrackItem[]) => (subsetIndex: number) => {
+  const handleRemoveFromSubset = (subset: DraftTrack[]) => (subsetIndex: number) => {
     draftStore.update((prev) => {
       const target = subset[subsetIndex];
       if (!target) return prev;
@@ -98,8 +114,16 @@ export function BuilderShell() {
     draftStore.update((prev) => ({ ...prev, visibility }));
   const handleBuildAnother = () => draftStore.reset();
 
-  const resolvedTracks = draft.tracks.filter(isResolved);
-  const failedTracks = draft.tracks.filter(isFailed);
+  // Not `isResolved`/`isFailed` from `lib/type-guards`: those narrow
+  // `TrackItem`, but draft tracks carry an extra `rowId` (see `DraftTrack` in
+  // `lib/types`) that a `TrackItem`-typed predicate can't preserve through
+  // `.filter()`. Narrowing on `status` directly keeps `rowId` on the result.
+  const resolvedTracks = draft.tracks.filter(
+    (track): track is DraftResolvedTrack => track.status === TRACK_STATUS.RESOLVED
+  );
+  const failedTracks = draft.tracks.filter(
+    (track): track is DraftFailedTrack => track.status === TRACK_STATUS.FAILED
+  );
   const existingUris = new Set(resolvedTracks.map((track) => track.spotifyUri));
 
   return (
@@ -162,6 +186,7 @@ export function BuilderShell() {
               <div className="mt-3">
                 <TrackList
                   tracks={resolvedTracks}
+                  rowIds={resolvedTracks.map((track) => track.rowId)}
                   onRemove={handleRemoveFromSubset(resolvedTracks)}
                   onReorder={handleReorderResolved}
                   emptyMessage="No tracks yet. Search above or go back and paste a list."
@@ -182,6 +207,7 @@ export function BuilderShell() {
                   <div className="mt-3">
                     <TrackList
                       tracks={failedTracks}
+                      rowIds={failedTracks.map((track) => track.rowId)}
                       onRemove={handleRemoveFromSubset(failedTracks)}
                     />
                   </div>

@@ -123,6 +123,10 @@ async function spotifyFetch<T>(endpoint: string, options: FetchOptions = {}): Pr
         // Try exactly once more
         return spotifyFetch<T>(endpoint, { ...options, _retry: true });
       }
+
+      await clearSpotifyTokens(); // Refresh failed, clear poisoned session
+    } else {
+      await clearSpotifyTokens(); // No refresh token, clear stale session
     }
   }
 

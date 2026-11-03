@@ -4,7 +4,14 @@ import { TrackArt } from '@/components/track-art';
 import type { ResolvedTrack } from '@/lib/types';
 
 interface CoverCollageProps {
-  tracks: ResolvedTrack[];
+  /**
+   * `rowId` is optional here (unlike `PreviewRail`'s prop) because this
+   * component is also used by `SaveSuccessState` with plain, rowId-less
+   * `ResolvedTrack`s. When present (the builder's draft tracks), it's used
+   * as the row key instead of `spotifyUri` so a pasted duplicate doesn't
+   * collide with its own first occurrence.
+   */
+  tracks: (ResolvedTrack & { rowId?: string })[];
 }
 
 const QUADRANT_COUNT = 4;
@@ -30,11 +37,11 @@ export function CoverCollage({ tracks }: CoverCollageProps) {
 
   return (
     <div className="grid aspect-square w-full grid-cols-2 grid-rows-2 overflow-hidden rounded-[var(--radius-sm)] border border-border shadow-card">
-      {quadrants.map((track) => {
+      {quadrants.map((track, index) => {
         const { title, artist, imageUrl } = track.displayData;
         return (
           <TrackArt
-            key={track.spotifyUri}
+            key={track.rowId ?? `${track.spotifyUri}-${index}`}
             title={title}
             artist={artist}
             imageUrl={imageUrl}

@@ -1,6 +1,6 @@
 import { normalizeError, ok } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
-import { SpotifyPlaylistsResponse } from '@/lib/spotify-types';
+import { SpotifyPlaylistsResponse, SpotifyPlaylistItem } from '@/lib/spotify-types';
 import { toPlaylistSummary } from '@/lib/spotify-mappers';
 import { spotifyClient } from '@/lib/spotify-client';
 import crypto from 'crypto';
@@ -10,15 +10,16 @@ export async function GET(request: NextRequest) {
   const reqId = crypto.randomUUID();
 
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const limit = searchParams.get('limit') || '50';
-    const offset = searchParams.get('offset') || '0';
+    const items: SpotifyPlaylistItem[] = [];
+    let nextUrl: string | null = '/me/playlists?limit=50';
 
-    const data = await spotifyClient.get<SpotifyPlaylistsResponse>(
-      `/me/playlists?limit=${limit}&offset=${offset}`
-    );
+    while (nextUrl) {
+      const data: SpotifyPlaylistsResponse =
+        await spotifyClient.get<SpotifyPlaylistsResponse>(nextUrl);
+      items.push(...(data.items || []));
+      nextUrl = data.next;
+    }
 
-    const items = data.items || [];
     const profile = await spotifyClient.get<{ id: string }>('/me');
     const editableItems = items.filter(
       (playlist) => playlist.owner?.id === profile.id || playlist.collaborative
@@ -28,7 +29,6 @@ export async function GET(request: NextRequest) {
 
     return ok({
       playlists: mappedPlaylists,
-      next: data.next,
     });
   } catch (error) {
     logger.error('Fetch user playlists failed', error, { reqId });

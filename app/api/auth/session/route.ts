@@ -12,7 +12,7 @@ export async function GET() {
   const tokens = await getSpotifyTokens();
   const authenticated = Boolean(tokens.accessToken || tokens.refreshToken);
 
-  const user = tokens.accessToken ? await fetchSpotifyProfile(tokens.accessToken) : null;
+  const user = tokens.accessToken ? await fetchSpotifyProfile() : null;
 
   const body: SessionResponse = { authenticated, user };
   return ok(body);
