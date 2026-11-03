@@ -5,20 +5,18 @@ import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import './globals.css';
 
-// Self-hosted (latin subset, variable weight) instead of next/font/google: Google Fonts
+// Self-hosted (latin subset) instead of next/font/google: Google Fonts
 // intermittently serves extensionless `/l/font?kit=` URLs that fail `next build`
 // (vercel/next.js#99114). ponytail: latin only; add latin-ext files if accented names render in the fallback.
-const hankenGrotesk = localFont({
-  src: './fonts/HankenGrotesk-latin.woff2',
-  variable: '--font-hanken-grotesk',
-  weight: '400 800',
-  display: 'swap',
-});
-
-const spaceGrotesk = localFont({
-  src: './fonts/SpaceGrotesk-latin.woff2',
-  variable: '--font-space-grotesk',
-  weight: '400 700',
+const poppins = localFont({
+  src: [
+    { path: './fonts/Poppins-400-latin.woff2', weight: '400' },
+    { path: './fonts/Poppins-500-latin.woff2', weight: '500' },
+    { path: './fonts/Poppins-600-latin.woff2', weight: '600' },
+    { path: './fonts/Poppins-700-latin.woff2', weight: '700' },
+    { path: './fonts/Poppins-800-latin.woff2', weight: '800' },
+  ],
+  variable: '--font-poppins',
   display: 'swap',
 });
 
@@ -40,15 +38,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={cn(
-          hankenGrotesk.variable,
-          spaceGrotesk.variable,
-          jetbrainsMono.variable,
-          'antialiased'
-        )}
-      >
+    // Font variables live on <html> because globals.css builds the font stacks on :root.
+    <html
+      lang="en"
+      className={cn(poppins.variable, jetbrainsMono.variable)}
+      suppressHydrationWarning
+    >
+      <body className="antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>

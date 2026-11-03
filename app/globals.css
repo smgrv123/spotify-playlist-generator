@@ -6,9 +6,9 @@
 
 /* ============================================================
    Vibecrafter — theme = identity tokens
-   :root   → Studio identity (Hanken display, 16/11/22 radii,
+   :root   → Studio identity (Poppins 800 display, 16/11/22 radii,
              rounded-square brand mark, no glow)
-   .dark   → Vinyl identity  (Space Grotesk display, 14/9/20 radii,
+   .dark   → Vinyl identity  (Poppins 700 display, 14/9/20 radii,
              circle brand mark, green glow, coral accent-2)
 
    shadcn semantic tokens (--background, --card, etc.) are rewired
@@ -66,8 +66,8 @@
    ============================================================ */
 :root {
   /* Font stack */
-  --font-body: var(--font-hanken-grotesk), 'Hanken Grotesk', system-ui, sans-serif;
-  --font-display: var(--font-hanken-grotesk), 'Hanken Grotesk', system-ui, sans-serif;
+  --font-body: var(--font-poppins), 'Poppins', system-ui, sans-serif;
+  --font-display: var(--font-poppins), 'Poppins', system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), 'JetBrains Mono', ui-monospace, monospace;
 
   /* Identity tokens */
@@ -134,9 +134,6 @@
    .dark — Vinyl identity
    ============================================================ */
 .dark {
-  /* Font stack — Vinyl uses Space Grotesk for the display family */
-  --font-display: var(--font-space-grotesk), 'Space Grotesk', system-ui, sans-serif;
-
   /* Identity tokens */
   --display-spacing: -0.018em;
   --display-weight: 700;
